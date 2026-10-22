@@ -1,5 +1,6 @@
 # Programming settings
 DEBUG_PRINT: bool = True
+USE_DRAWN_FIELD : bool = True
 
 
 # Performance settings

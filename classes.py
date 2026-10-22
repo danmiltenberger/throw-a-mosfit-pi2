@@ -14,18 +14,19 @@ class Point:
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
 
-    def int_tuple(self) -> tuple[int, int]:
-        return (self.x_int, self.y_int)
-
     def float_tuple(self) -> tuple[float, float]:
         return (self.x, self.y)
+
+
+def get_point_int_tuple(point: Point) -> tuple[int,int]:
+    return (int(point.x), int(point.y))
 
 @dataclass
 class Rectangle:
     width: int = 0
     height: int = 0
     top_left: Point = field(default_factory=lambda: Point(0, 0))
-    center: Point = Point(top_left.x + width / 2, top_left.y + height / 2)
+    #center: Point = Point(top_left.x + width / 2, top_left.y + height / 2)
 
 
 @dataclass
@@ -42,6 +43,7 @@ class DetectedObject:
     def get_pos_wrt_bot(self):
         self.pos_wrt_bot.x = self.distance_from_bot * math.cos(self.bearing_rad)
         self.pos_wrt_bot.y = self.distance_from_bot * math.sin(self.bearing_rad)
+        return
 
 
 
@@ -49,7 +51,7 @@ class DetectedObject:
 @dataclass
 class FieldState:
 
-    found_dict : dict = {
+    found_dict  = {
         BALL_RED : False,
         BALL_YELLOW : False,
         HAT_BLUE : False,

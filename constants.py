@@ -16,7 +16,6 @@ START_GAME = "START_GAME"
 TRAINING_DATA = "training_data"
 FIELD_STATES = "field_states"
 
-
 # Field State Headers
 TIMESTEP = "timestep"
 OUR_BOT_POS_IN_X = "us_in_x"
@@ -43,9 +42,11 @@ HSV_HI = "HSV_HI"
 ANALYSIS_SHAPE = "ANALYSIS_SHAPE"
 
 # known widths
-BALL_RED_DIAM : float = 7
-BALL_YELLOW_DIAM : float = 2.7
-HAT_DIAM : float = 8
+BALL_RED_DIAM_IN : float = 7
+BALL_YELLOW_DIAM_IN : float = 2.7
+HAT_DIAM_IN : float = 8
+GOALPOST_DIAM_IN : float = 8
+GOALPOST_RADIUS_IN : int = int(GOALPOST_DIAM_IN/2)
 
 # ways to analyze
 RECT = "RECT"
@@ -59,6 +60,10 @@ YELLOW_TEAM = "YELLOW"
 BLUE_TEAM = "BLUE"
 FUCHSIA_SIDE = "FUCHSIA"
 GREEN_SIDE = "GREEN"
+
+
+# visualization
+PIXELS_PER_INCH : int = 5
 
 @dataclass 
 # default match settings
