@@ -8,51 +8,6 @@ from constants import *
 from tam_library import append_dict_to_csv
 from convert_from_front_to_top_down import calc_distance_from_bot, calc_angle_from_screen_center
 
-search_dict = {
-    BALL_RED: {
-        DRAW_COLOR: RED,
-        HSV_LO: np.array([0, 200, 0], dtype=np.uint8),
-        HSV_HI: np.array([10, 255, 157], dtype=np.uint8),
-        KNOWN_WIDTH: BALL_RED_DIAM_IN,
-        ANALYSIS_SHAPE : CIRC,
-    },
-    BALL_YELLOW: {
-        DRAW_COLOR: YELLOW,
-        HSV_LO: np.array([21, 103, 170], dtype=np.uint8),
-        HSV_HI: np.array([35, 201, 250], dtype=np.uint8),
-        KNOWN_WIDTH: BALL_YELLOW_DIAM_IN,
-        ANALYSIS_SHAPE : CIRC,
-    },
-    HAT_BLUE: {
-        DRAW_COLOR: BLUE,
-        HSV_LO: np.array([90, 163, 125], dtype=np.uint8),
-        HSV_HI: np.array([110, 255, 205], dtype=np.uint8),
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-    HAT_YELLOW: {
-        DRAW_COLOR: YELLOW,
-        HSV_LO: np.array([22, 150, 174], dtype=np.uint8),
-        HSV_HI: np.array([42, 210, 228], dtype=np.uint8),
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-    HAT_FUCHSIA: {
-        DRAW_COLOR: FUCHSIA,
-        HSV_LO: "to_be_determined",
-        HSV_HI: "to_be_determined",
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-    HAT_GREEN: {
-        DRAW_COLOR: GREEN,
-        HSV_LO: "to_be_determined",
-        HSV_HI: "to_be_determined",
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-}
-
 
 def get_fieldstate_from_frame(frame: np.ndarray, timestep: float = 0, append_to_dict: bool = False, csv_path: str = "") -> FieldState:
     '''search the frame for each object and return a fieldstate'''

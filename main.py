@@ -6,7 +6,7 @@ from pathlib import Path
 from penalty_kick import penalty_kick
 from system_check import system_check
 from play_match import play_match
-from tam_library import check_button
+from tam_library import check_button, tamprint
 
 match_settings = MatchSettings()
 
@@ -47,15 +47,10 @@ def main():
             WAITING_FOR_START = True
 
 
-def tamprint(string: str):
-    """print with a custom start"""
-    print(f"TAM: {string}")
 
 
-def debugprint(string: str):
-    """print to terminal or not, depending on DEBUG_PRINT var"""
-    if DEBUG_PRINT:
-        tamprint(string=string)
+
+
 
 
 def setup_folders():

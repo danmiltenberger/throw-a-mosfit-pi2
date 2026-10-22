@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import numpy as np
 
 # Camera Constants
 CAMERA_CAPTURE_X = 640
@@ -40,13 +41,18 @@ DRAW_COLOR = "DRAW_COLOR"
 HSV_LO = "HSV_LO"
 HSV_HI = "HSV_HI"
 ANALYSIS_SHAPE = "ANALYSIS_SHAPE"
+RADIUS_IN = "RADIUS_IN"
 
 # known widths
 BALL_RED_DIAM_IN : float = 7
+BALL_RED_RADIUS_IN : float = 7/2
 BALL_YELLOW_DIAM_IN : float = 2.7
 HAT_DIAM_IN : float = 8
 GOALPOST_DIAM_IN : float = 8
 GOALPOST_RADIUS_IN : int = int(GOALPOST_DIAM_IN/2)
+
+BOT_DIAM_IN = 14
+BOT_RADIUS_IN = 7
 
 # ways to analyze
 RECT = "RECT"
@@ -77,6 +83,9 @@ class MatchSettings:
     THEIR_TEAM_COLOR: str = BLUE_TEAM
     GOAL_EAST_COLOR: str = FUCHSIA_SIDE
     GOAL_WEST_COLOR: str = GREEN_SIDE
+
+
+
 
 
 ### colors
@@ -122,3 +131,52 @@ LIGHT_PINK  = (193, 182, 255)
 DARK_RED    = (0, 0, 139)
 DARK_GREEN  = (0, 100, 0)
 DARK_BLUE   = (139, 0, 0)
+
+
+
+#### quick look up
+
+search_dict = {
+    BALL_RED: {
+        DRAW_COLOR: RED,
+        HSV_LO: np.array([0, 200, 0], dtype=np.uint8),
+        HSV_HI: np.array([10, 255, 157], dtype=np.uint8),
+        KNOWN_WIDTH: BALL_RED_DIAM_IN,
+        ANALYSIS_SHAPE : CIRC,
+    },
+    BALL_YELLOW: {
+        DRAW_COLOR: YELLOW,
+        HSV_LO: np.array([21, 103, 170], dtype=np.uint8),
+        HSV_HI: np.array([35, 201, 250], dtype=np.uint8),
+        KNOWN_WIDTH: BALL_YELLOW_DIAM_IN,
+        ANALYSIS_SHAPE : CIRC,
+    },
+    HAT_BLUE: {
+        DRAW_COLOR: BLUE,
+        HSV_LO: np.array([90, 163, 125], dtype=np.uint8),
+        HSV_HI: np.array([110, 255, 205], dtype=np.uint8),
+        KNOWN_WIDTH: HAT_DIAM_IN,
+        ANALYSIS_SHAPE : RECT,
+    },
+    HAT_YELLOW: {
+        DRAW_COLOR: YELLOW,
+        HSV_LO: np.array([22, 150, 174], dtype=np.uint8),
+        HSV_HI: np.array([42, 210, 228], dtype=np.uint8),
+        KNOWN_WIDTH: HAT_DIAM_IN,
+        ANALYSIS_SHAPE : RECT,
+    },
+    HAT_FUCHSIA: {
+        DRAW_COLOR: FUCHSIA,
+        HSV_LO: "to_be_determined",
+        HSV_HI: "to_be_determined",
+        KNOWN_WIDTH: HAT_DIAM_IN,
+        ANALYSIS_SHAPE : RECT,
+    },
+    HAT_GREEN: {
+        DRAW_COLOR: GREEN,
+        HSV_LO: "to_be_determined",
+        HSV_HI: "to_be_determined",
+        KNOWN_WIDTH: HAT_DIAM_IN,
+        ANALYSIS_SHAPE : RECT,
+    },
+}

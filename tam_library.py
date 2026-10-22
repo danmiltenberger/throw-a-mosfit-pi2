@@ -4,6 +4,7 @@ import os
 import numpy as np
 from pathlib import Path
 from datetime import datetime
+from variables import DEBUG_PRINT
 
 
 def check_button(button_name) -> bool:
@@ -11,6 +12,17 @@ def check_button(button_name) -> bool:
 
     # TODO
     return True
+
+
+def tamprint(string: str):
+    """print with a custom start"""
+    print(f"TAM: {string}")
+
+
+def debugprint(string: str):
+    """print to terminal or not, depending on DEBUG_PRINT var"""
+    if DEBUG_PRINT:
+        tamprint(string=string)
 
 
 def show_frame(frame: np.ndarray, window_name : str = "Frame"):
@@ -21,11 +33,41 @@ def show_frame(frame: np.ndarray, window_name : str = "Frame"):
 
 
 def load_image_as_frame(im_path: str) -> np.ndarray:
-    frame = cv2.imread(im_path)
-    if frame is np.ndarray:
-        return frame
-    else:
-        raise ValueError(f"Unable to load frame from path {im_path}")
+    """Load an image as a three-channel BGR frame.
+
+    Raises:
+        TypeError: If im_path is not a string.
+        ValueError: If im_path is blank or the image cannot be decoded.
+        FileNotFoundError: If the path does not exist.
+        IsADirectoryError: If the path points to a directory.
+    """
+    if not isinstance(im_path, str):
+        raise TypeError(
+            f"im_path must be a str, got {type(im_path).__name__}"
+        )
+
+    if not im_path.strip():
+        raise ValueError("im_path must not be empty or whitespace-only.")
+
+    path = Path(im_path).expanduser()
+
+    if not path.exists():
+        raise FileNotFoundError(f"Image file not found: {path}")
+
+    if path.is_dir():
+        raise IsADirectoryError(f"Expected an image file, got a directory: {path}")
+
+    frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
+
+    if frame is None:
+        raise ValueError(f"Unable to read or decode image: {path}")
+
+    if not isinstance(frame, np.ndarray):
+        raise TypeError(
+            f"Expected np.ndarray, got {type(frame).__name__}"
+        )
+
+    return frame
 
 
 def load_video_as_list_of_frames(vid_path: str) -> list[np.ndarray]:

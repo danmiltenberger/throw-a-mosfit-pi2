@@ -8,14 +8,9 @@ class Point:
     x: float = 0
     y: float = 0
 
-    x_int = int(x)
-    y_int = int(y)
-
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
 
-    def float_tuple(self) -> tuple[float, float]:
-        return (self.x, self.y)
 
 
 def get_point_int_tuple(point: Point) -> tuple[int,int]:
