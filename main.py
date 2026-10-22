@@ -69,14 +69,14 @@ def setup_folders():
 def change_team():
     """update the field view and robot colors"""
 
-    if match_settings.OUR_TEAM_COLOR == YELLOW:
+    if match_settings.OUR_TEAM_COLOR == YELLOW_TEAM:
 
-        match_settings.OUR_TEAM_COLOR = BLUE
-        match_settings.THEIR_TEAM_COLOR = YELLOW
+        match_settings.OUR_TEAM_COLOR = BLUE_TEAM
+        match_settings.THEIR_TEAM_COLOR = YELLOW_TEAM
 
-    elif match_settings.OUR_TEAM_COLOR == BLUE:
-        match_settings.OUR_TEAM_COLOR = YELLOW
-        match_settings.THEIR_TEAM_COLOR = BLUE
+    elif match_settings.OUR_TEAM_COLOR == BLUE_TEAM:
+        match_settings.OUR_TEAM_COLOR = YELLOW_TEAM
+        match_settings.THEIR_TEAM_COLOR = BLUE_TEAM
 
     else:
         tamprint(
