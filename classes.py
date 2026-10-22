@@ -9,7 +9,8 @@ class Point:
     y: float = 0
 
     def __str__(self) -> str:
-        return f"({self.x}, {self.y})"
+        return f"({round(self.x)}, {round(self.y)})"
+
 
 
 
@@ -40,6 +41,9 @@ class DetectedObject:
         self.pos_wrt_bot.y = self.distance_from_bot * math.sin(self.bearing_rad)
         return
 
+    def __str__(self) -> str:
+        return f"obj(width_px: {self.width_px}, area_px: {self.area_px}, screen_center_px: {self.center_pos_on_screen_px})"
+        pass
 
 
 
@@ -87,3 +91,8 @@ class FieldState:
         self.their_bot_pos_in.x = new_dict[THEIR_BOT_POS_IN_X]
         self.their_bot_pos_in.y = new_dict[THEIR_BOT_POS_IN_Y]
         self.their_bot_bearing_rad = new_dict[THEIR_BOT_BEARING]
+
+    def __str__(self) -> str:
+
+        return f"State(our_bot_pos: {self.our_bot_pos_in}, their_bot_pos: {self.their_bot_pos_in}, ball_pos: {self.ball_pos_in})"
+        pass

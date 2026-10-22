@@ -4,9 +4,7 @@ import numpy as np
 from classes import Point, FieldState, get_point_int_tuple
 from draw_field import (
     get_field_frame,
-    inches_to_screen,
-    convert_to_px,
-    draw_notched_rectangle,
+    draw_field_from_field_state
 )
 from tam_library import show_frame, debugprint
 from constants import *
@@ -144,60 +142,6 @@ def draw_outlined_circle(
 
     return image
 
-
-def draw_field_from_field_state(
-    field_frame: np.ndarray, state: FieldState
-) -> np.ndarray:
-
-    if draw_ball_red:
-        ball_pos_px = inches_to_screen(state.ball_pos_in)
-
-        field_frame = draw_outlined_circle(
-            image=field_frame,
-            center_x=int(ball_pos_px.x),
-            center_y=int(ball_pos_px.y),
-            color=RED,
-            radius=convert_to_px(BALL_RED_RADIUS_IN),
-        )
-
-    # FIXME
-    OUR_TEAM_COLOR = YELLOW
-
-    if draw_our_bot:
-
-        our_bot_pos_px = inches_to_screen(state.our_bot_pos_in)
-
-        field_frame = draw_notched_rectangle(
-            image=field_frame,
-            center_x=int(our_bot_pos_px.x),
-            top_y=int(our_bot_pos_px.y - convert_to_px(BOT_RADIUS_IN)),
-            width=convert_to_px(BOT_RADIUS_IN) * 2,
-            height=convert_to_px(BOT_RADIUS_IN) * 2,
-            base_length=convert_to_px(BALL_RED_RADIUS_IN) * 2,
-            angle_deg=90,
-            color=OUR_TEAM_COLOR,
-            rotation_deg=math.degrees(state.our_bot_bearing_rad),
-            border_thickness=1,
-        )
-
-    THEIR_TEAM_COLOR = BLUE
-    if draw_their_bot:
-        their_bot_pos_x = inches_to_screen(state.their_bot_pos_in)
-
-        field_frame = draw_notched_rectangle(
-            image=field_frame,
-            center_x=int(their_bot_pos_x.x),
-            top_y=int(their_bot_pos_x.y - convert_to_px(BOT_RADIUS_IN)),
-            width=convert_to_px(BOT_RADIUS_IN) * 2,
-            height=convert_to_px(BOT_RADIUS_IN) * 2,
-            base_length=convert_to_px(BALL_RED_RADIUS_IN) * 2,
-            angle_deg=90,
-            color=THEIR_TEAM_COLOR,
-            rotation_deg=math.degrees(state.their_bot_bearing_rad),
-            border_thickness=1,
-        )
-
-    return field_frame
 
 
 if __name__ == "__main__":
