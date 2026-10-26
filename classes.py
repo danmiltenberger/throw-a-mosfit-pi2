@@ -57,6 +57,8 @@ class DetectedObject:
 
 @dataclass
 class FieldState:
+    '''a class to contain all the information needed to draw the current state of the field. 
+    EVERYTHING in inches or radians'''
 
     found_dict = {}
 
@@ -65,12 +67,20 @@ class FieldState:
     our_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
     our_bot_bearing_rad: float = BEARING_NORTH
 
+    # defining the 'capture zone' where if the ball is within this zone it is considered captured
+    our_bot_capture_zone_dis_ahead_in : float = 10
+    our_bot_capture_zone_radius : float = 5
+    capture_zone_center: Point = field(default_factory=lambda: Point(0, 0))
+
+
     their_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
     their_bot_bearing_rad: float = BEARING_SOUTH
 
     ball_pos_in: Point = field(default_factory=lambda: Point(0, 0))
     ball_vel_x_in_per_s : float = 0
     ball_vel_y_in_per_s : float = 0
+    ball_is_ours : bool = False
+    ball_is_theirs : bool = False
 
     def to_dict(self) -> dict:
         field_state_dict = {
@@ -98,5 +108,16 @@ class FieldState:
 
         return f"State(our_bot_pos: {self.our_bot_pos_in}, their_bot_pos: {self.their_bot_pos_in}, ball_pos: {self.ball_pos_in})"
         pass
+
+def get_capture_zone_point(state: FieldState) -> FieldState:
+
+    capture_zone_center : Point = Point(
+        x= state.our_bot_capture_zone_dis_ahead_in * math.cos(state.our_bot_bearing_rad) + state.our_bot_pos_in.x,
+        y= state.our_bot_capture_zone_dis_ahead_in * math.sin(state.our_bot_bearing_rad) + state.our_bot_pos_in.y,
+    )
+
+    state.capture_zone_center = capture_zone_center
+    return state
+
 
 

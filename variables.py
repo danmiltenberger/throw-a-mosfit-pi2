@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 # Programming settings
 DEBUG_PRINT: bool = True
@@ -26,6 +27,7 @@ search_for_hat_green: bool = False
 draw_ball_red : bool = True
 draw_ball_yellow : bool = True
 draw_our_bot : bool = True
+draw_our_bot_capture_zone : bool = False
 draw_their_bot : bool = False
 
 
@@ -33,7 +35,7 @@ draw_their_bot : bool = False
 in_per_sec_strafe : float = 5
 in_per_sec_forward : float = 10
 in_per_sec_backward : float = 7
-rad_per_sec_rotation : float = np.pi / 2
+rad_per_sec_rotation : float = math.radians(15)
 
 # movement constants
 BOT_ACTION = "BOT_ACTION"

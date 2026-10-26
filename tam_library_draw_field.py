@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from constants import *
 from variables import *
-from classes import Rectangle, Point, get_point_int_tuple, FieldState
+from classes import Rectangle, Point, get_point_int_tuple, FieldState, get_capture_zone_point
 from tam_library import load_image_as_frame
 import math
 
@@ -512,19 +512,47 @@ def draw_field_from_field_state(
     field_frame: np.ndarray, state: FieldState
 ) -> np.ndarray:
 
+    # FIXME TODO
+    OUR_TEAM_COLOR = YELLOW
+    THEIR_TEAM_COLOR = BLUE
+
     if draw_ball_red:
+
+        if state.ball_is_ours:
+            outline_color = OUR_TEAM_COLOR
+            state.ball_pos_in= state.capture_zone_center
+
+        elif state.ball_is_theirs:
+            outline_color = THEIR_TEAM_COLOR
+        else:
+            outline_color = BLACK
+
+
         ball_pos_px = inches_to_screen(state.ball_pos_in)
 
         field_frame = draw_outlined_circle(
-            image=field_frame,
-            center_x=int(ball_pos_px.x),
-            center_y=int(ball_pos_px.y),
-            color=RED,
-            radius=convert_to_px(BALL_RED_RADIUS_IN),
+            center= ball_pos_px,
+            outline_color= outline_color,
+            fill_color= RED,
+            image= field_frame,
+            outline_thickness= 2,
+            radius= convert_to_px(BALL_RED_RADIUS_IN)
         )
 
-    # FIXME
-    OUR_TEAM_COLOR = YELLOW
+    if draw_our_bot_capture_zone:
+
+        state = get_capture_zone_point(state)
+        capture_zone_pos_px = inches_to_screen(state.capture_zone_center)
+
+        field_frame = draw_transparent_circle(
+            alpha= 0.5,
+            circle_center= capture_zone_pos_px,
+            color= OUR_TEAM_COLOR,
+            image= field_frame,
+            radius= convert_to_px(state.our_bot_capture_zone_radius)
+        )
+
+
 
     if draw_our_bot:
 
@@ -543,7 +571,6 @@ def draw_field_from_field_state(
             border_thickness=1,
         )
 
-    THEIR_TEAM_COLOR = BLUE
     if draw_their_bot:
         their_bot_pos_x = inches_to_screen(state.their_bot_pos_in)
 
@@ -564,74 +591,72 @@ def draw_field_from_field_state(
 
 
 def draw_outlined_circle(
-    image,
-    center_x,
-    center_y,
-    radius,
-    color=(255, 255, 255),
-    border_thickness=1,
-):
+    image: np.ndarray,
+    center: Point,
+    radius: int,
+    fill_color: tuple[int, int, int],
+    outline_color: tuple[int, int, int],
+    outline_thickness: int = 2,
+) -> np.ndarray:
+    """Draw a filled, outlined circle in place and return the image.
+
+    Colors use BGR order. Point must expose .x and .y attributes.
     """
-    Draw a filled circle with a thin black outline.
+    if radius < 0:
+        raise ValueError("radius must be non-negative.")
+    if outline_thickness < 1:
+        raise ValueError("outline_thickness must be at least 1.")
 
-    Parameters
-    ----------
-    image : np.ndarray
-        Destination image; modified in place.
-    center_x, center_y : float
-        Circle center in image coordinates, in pixels.
-    radius : float
-        Circle radius in pixels; must be positive.
-    color : tuple or int
-        OpenCV BGR fill color, or a scalar for a grayscale image.
-    border_thickness : int
-        Black outline width in pixels; must be at least 1.
-
-    Returns
-    -------
-    np.ndarray
-        The modified input image.
-    """
-    if not all(np.isfinite(v) for v in (center_x, center_y, radius)):
-        raise ValueError("Center coordinates and radius must be finite.")
-    if radius <= 0:
-        raise ValueError("radius must be positive.")
-    if not isinstance(border_thickness, (int, np.integer)) or border_thickness < 1:
-        raise ValueError("border_thickness must be a positive integer.")
-
-    # Preserve subpixel coordinates until rasterization.
-    shift = 8
-    scale = 1 << shift
-    center = (
-        int(round(center_x * scale)),
-        int(round(center_y * scale)),
-    )
-    scaled_radius = int(round(radius * scale))
+    center_xy = (int(center.x), int(center.y))
 
     cv2.circle(
-        image,
-        center,
-        scaled_radius,
-        color=color,
-        thickness=cv2.FILLED,
-        lineType=cv2.LINE_AA,
-        shift=shift,
+        image, center_xy, radius, fill_color,
+        thickness=-1, lineType=cv2.LINE_AA,
     )
-
-    black = 0 if image.ndim == 2 else (0,) * image.shape[2]
-
     cv2.circle(
-        image,
-        center,
-        scaled_radius,
-        color=black,
-        thickness=int(border_thickness),
-        lineType=cv2.LINE_AA,
-        shift=shift,
+        image, center_xy, radius, outline_color,
+        thickness=outline_thickness, lineType=cv2.LINE_AA,
     )
 
     return image
 
+def draw_transparent_circle(
+    image: np.ndarray,
+    circle_center: Point,
+    radius: int,
+    color: tuple[int, int, int] = (0, 255, 0),
+    alpha: float = 0.5,
+    thickness: int = -1,
+) -> np.ndarray:
+    """Return a BGR image with a semi-transparent circle.
+
+    Args:
+        image: Input BGR image (not modified).
+        center: Circle center as a Point
+        radius: Circle radius in pixels.
+        color: Circle color as (blue, green, red).
+        alpha: Opacity, from 0.0 (invisible) to 1.0 (opaque).
+        thickness: -1 for a filled circle; positive values for an outline.
+    """
+    if not 0.0 <= alpha <= 1.0:
+        raise ValueError("alpha must be between 0.0 and 1.0.")
+    if radius < 0:
+        raise ValueError("radius must be non-negative.")
+
+
+    center = get_point_int_tuple(circle_center)
+
+    overlay = image.copy()
+    cv2.circle(
+        overlay,
+        center,
+        radius,
+        color,
+        thickness=thickness,
+        lineType=cv2.LINE_AA,
+    )
+
+    return cv2.addWeighted(overlay, alpha, image, 1.0 - alpha, 0)
 
 
 if __name__ == "__main__":

@@ -8,3 +8,6 @@ BEARING_WEST : float = np.pi
 BEARING_SOUTH : float = -np.pi/2
 
 BEARING_NORTH_EAST : float = np.pi/4
+BEARING_NORTH_WEST : float = np.pi/2 + np.pi /4
+BEARING_SOUTH_EAST : float = - np.pi/4
+BEARING_SOUTH_WEST : float = -np.pi/2 - np.pi/4 
