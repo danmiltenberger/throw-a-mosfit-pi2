@@ -373,9 +373,9 @@ def draw_empty_field(
 def get_field_frame() -> np.ndarray:
 
     if USE_DRAWN_FIELD:
-        frame = load_image_as_frame("field_empty.png")
+        frame = load_image_as_frame("field_pngs/field_empty.png")
     else:
-        frame = load_image_as_frame("field_black.png")
+        frame = load_image_as_frame("field_pngs/field_black.png")
 
     return frame
 

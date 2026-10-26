@@ -217,15 +217,9 @@ def update_who_has_ball(fieldstate : FieldState) -> FieldState:
     return fieldstate
 
 
-def simulate_bot(save_to_csv: bool = False):
+def simulate_bot(field_state: FieldState, command_list: list, save_to_csv: bool = False, ):
     # have the bot move around given a list
     # of instructions
-
-    field_state = FieldState(
-        our_bot_pos_in=Point(48, 12), 
-        our_bot_bearing_rad= BEARING_NORTH,
-        ball_pos_in= FIELD_CENTER,
-    )
 
     field = get_field_frame()
     window_name = "bot_on_field"
@@ -233,15 +227,6 @@ def simulate_bot(save_to_csv: bool = False):
     previous_time = time.perf_counter()
     action_start_time = previous_time
     time_at_start = previous_time
-
-    forward_3 = {BOT_ACTION: BOT_FORWARD, BOT_ACTION_DURATION_SEC: 3,}
-    backward_3 = {BOT_ACTION: BOT_BACKWARD, BOT_ACTION_DURATION_SEC: 3,}
-    strafe_left2 = {BOT_ACTION: BOT_STRAFE_LEFT, BOT_ACTION_DURATION_SEC: 2}
-    strafe_right2 = {BOT_ACTION: BOT_STRAFE_RIGHT, BOT_ACTION_DURATION_SEC: 2}
-    rot_left_4 = {BOT_ACTION: BOT_ROTATE_LEFT, BOT_ACTION_DURATION_SEC: 4 }
-    rot_right_4 = {BOT_ACTION: BOT_ROTATE_RIGHT, BOT_ACTION_DURATION_SEC: 4 }
-
-    command_list = [forward_3, forward_3, rot_left_4, strafe_right2]
 
     command_step: int = 0
     while True:
@@ -356,7 +341,24 @@ def test_is_within_rect():
 
 
 if __name__ == "__main__":
-    simulate_bot(save_to_csv= True)
+
+    forward_3 = {BOT_ACTION: BOT_FORWARD, BOT_ACTION_DURATION_SEC: 3,}
+    backward_3 = {BOT_ACTION: BOT_BACKWARD, BOT_ACTION_DURATION_SEC: 3,}
+    strafe_left2 = {BOT_ACTION: BOT_STRAFE_LEFT, BOT_ACTION_DURATION_SEC: 2}
+    strafe_right2 = {BOT_ACTION: BOT_STRAFE_RIGHT, BOT_ACTION_DURATION_SEC: 2}
+    rot_left_4 = {BOT_ACTION: BOT_ROTATE_LEFT, BOT_ACTION_DURATION_SEC: 4 }
+    rot_right_4 = {BOT_ACTION: BOT_ROTATE_RIGHT, BOT_ACTION_DURATION_SEC: 4 }
+
+    command_list = [forward_3, forward_3, rot_left_4, strafe_right2]
+
+    init_field = FieldState(
+        ball_pos_in= FIELD_CENTER,
+        our_bot_pos_in= FIELD_GOALBOX_CENTER_BOTTOM,
+    )
+    simulate_bot(
+        save_to_csv= False, 
+        command_list= command_list, 
+        field_state= init_field)
 
     # test_is_on_line()
     # test_is_within_rect()
