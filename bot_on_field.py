@@ -7,6 +7,7 @@ from constants import *
 from constants_rads import *
 from constants_points import *
 from variables import *
+from variables_robot import *
 import time
 import cv2
 import math

@@ -6,6 +6,7 @@ from constants import *
 from constants_points import *
 from constants_rads import *
 from variables import *
+from variables_robot import *
 
 
 
@@ -114,6 +115,7 @@ def is_close_enough_to_goal(pos: Point) -> bool:
 
 
 def get_command_to_kick(field_state: FieldState):
+
 
     # consider angle etc
     # TODO
