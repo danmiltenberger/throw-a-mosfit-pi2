@@ -25,7 +25,6 @@ def main():
     show_frame(field_frame)
 
 
-
 def get_command(fieldstate: FieldState) -> str:
     '''analyze the field and determine what actions to take'''
 
