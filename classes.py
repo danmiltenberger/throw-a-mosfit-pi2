@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from constants import *
+from constants import TIMESTEP, OUR_BOT_BEARING, OUR_BOT_POS_IN_X, OUR_BOT_POS_IN_Y, THEIR_BOT_BEARING, THEIR_BOT_POS_IN_X, THEIR_BOT_POS_IN_Y
 from constants_rads import *
 import math
 
@@ -61,21 +61,27 @@ class FieldState:
     EVERYTHING in inches or radians'''
 
     found_dict = {}
-
     timestep: float = 0
 
+    # defining our bot
     our_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
     our_bot_bearing_rad: float = BEARING_NORTH
+
+    # defining the current bot command (and duration)
+    our_bot_command : str = "NO_COMMAND"
+    our_bot_command_duration : float = 0
+    our_bot_command_elapsed_time : float = 0
 
     # defining the 'capture zone' where if the ball is within this zone it is considered captured
     our_bot_capture_zone_dis_ahead_in : float = 10
     our_bot_capture_zone_radius : float = 5
     capture_zone_center: Point = field(default_factory=lambda: Point(0, 0))
 
-
+    # defining their bot
     their_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
     their_bot_bearing_rad: float = BEARING_SOUTH
 
+    # defining the ball
     ball_pos_in: Point = field(default_factory=lambda: Point(0, 0))
     ball_vel_x_in_per_s : float = 0
     ball_vel_y_in_per_s : float = 0
@@ -107,7 +113,7 @@ class FieldState:
     def __str__(self) -> str:
 
         return f"State(our_bot_pos: {self.our_bot_pos_in}, their_bot_pos: {self.their_bot_pos_in}, ball_pos: {self.ball_pos_in})"
-        pass
+    
 
 def get_capture_zone_point(state: FieldState) -> FieldState:
 

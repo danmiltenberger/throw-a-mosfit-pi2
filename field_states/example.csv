@@ -1,0 +1,7 @@
+timestep,our_bot_pos_in_x,our_bot_pos_in_y,our_bot_bearing_rad,our_bot_command,our_bot_command_duration,our_bot_command_elapsed_time,our_bot_capture_zone_dis_ahead_in,our_bot_capture_zone_radius,capture_zone_center_x,capture_zone_center_y,their_bot_pos_in_x,their_bot_pos_in_y,their_bot_bearing_rad,ball_pos_in_x,ball_pos_in_y,ball_vel_x_in_per_s,ball_vel_y_in_per_s,ball_is_ours,ball_is_theirs
+0.0,10,20,1.5707963267948966,NO_COMMAND,0,0,10,5,0,0,0,0,-1.5707963267948966,30,40,0,0,True,False
+0.1,11,21,1.5707963267948966,MOVE_FORWARD,0,0,10,5,0,0,0,0,-1.5707963267948966,31,41,0,0,False,False
+0.0,10,20,1.5707963267948966,NO_COMMAND,0,0,10,5,0,0,0,0,-1.5707963267948966,30,40,0,0,True,False
+0.1,11,21,1.5707963267948966,MOVE_FORWARD,0,0,10,5,0,0,0,0,-1.5707963267948966,31,41,0,0,False,False
+0.0,10,20,1.5707963267948966,NO_COMMAND,0,0,10,5,0,0,0,0,-1.5707963267948966,30,40,0,0,True,False
+0.1,11,21,1.5707963267948966,MOVE_FORWARD,0,0,10,5,0,0,0,0,-1.5707963267948966,31,41,0,0,False,False

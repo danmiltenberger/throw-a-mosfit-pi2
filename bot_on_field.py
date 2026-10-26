@@ -1,8 +1,10 @@
 from tam_library_draw_field import draw_field_from_field_state, get_field_frame
 from tam_library import show_frame
+from field_state_save_and_load import save_fieldstates_to_csv
 from classes import FieldState, Point, Line, get_capture_zone_point
 from constants import *
 from constants_rads import *
+from constants_points import *
 from variables import *
 import time
 import cv2
@@ -215,7 +217,7 @@ def update_who_has_ball(fieldstate : FieldState) -> FieldState:
     return fieldstate
 
 
-def simulate_bot():
+def simulate_bot(save_to_csv: bool = False):
     # have the bot move around given a list
     # of instructions
 
@@ -282,6 +284,9 @@ def simulate_bot():
         copy_field = draw_field_from_field_state(
             field_frame=copy_field, state=field_state
         )
+
+        if save_to_csv:
+            save_fieldstates_to_csv(fieldstates= [field_state], filepath="field_states/bot_on_field.csv")
 
         cv2.imshow(mat=copy_field, winname=window_name)
 
@@ -351,7 +356,7 @@ def test_is_within_rect():
 
 
 if __name__ == "__main__":
-    simulate_bot()
+    simulate_bot(save_to_csv= True)
 
     # test_is_on_line()
     # test_is_within_rect()
