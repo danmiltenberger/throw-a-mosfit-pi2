@@ -4,7 +4,6 @@ from constants import *
 from variables import *
 from classes import Rectangle, Point, get_point_int_tuple, FieldState
 from tam_library import load_image_as_frame
-from annotate_frames import draw_outlined_circle
 import math
 
 
@@ -540,7 +539,7 @@ def draw_field_from_field_state(
             base_length=convert_to_px(BALL_RED_RADIUS_IN) * 2,
             angle_deg=90,
             color=OUR_TEAM_COLOR,
-            rotation_deg=math.degrees(state.our_bot_bearing_rad),
+            rotation_deg=math.degrees(state.our_bot_bearing_rad) -90,
             border_thickness=1,
         )
 
@@ -564,6 +563,74 @@ def draw_field_from_field_state(
     return field_frame
 
 
+def draw_outlined_circle(
+    image,
+    center_x,
+    center_y,
+    radius,
+    color=(255, 255, 255),
+    border_thickness=1,
+):
+    """
+    Draw a filled circle with a thin black outline.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Destination image; modified in place.
+    center_x, center_y : float
+        Circle center in image coordinates, in pixels.
+    radius : float
+        Circle radius in pixels; must be positive.
+    color : tuple or int
+        OpenCV BGR fill color, or a scalar for a grayscale image.
+    border_thickness : int
+        Black outline width in pixels; must be at least 1.
+
+    Returns
+    -------
+    np.ndarray
+        The modified input image.
+    """
+    if not all(np.isfinite(v) for v in (center_x, center_y, radius)):
+        raise ValueError("Center coordinates and radius must be finite.")
+    if radius <= 0:
+        raise ValueError("radius must be positive.")
+    if not isinstance(border_thickness, (int, np.integer)) or border_thickness < 1:
+        raise ValueError("border_thickness must be a positive integer.")
+
+    # Preserve subpixel coordinates until rasterization.
+    shift = 8
+    scale = 1 << shift
+    center = (
+        int(round(center_x * scale)),
+        int(round(center_y * scale)),
+    )
+    scaled_radius = int(round(radius * scale))
+
+    cv2.circle(
+        image,
+        center,
+        scaled_radius,
+        color=color,
+        thickness=cv2.FILLED,
+        lineType=cv2.LINE_AA,
+        shift=shift,
+    )
+
+    black = 0 if image.ndim == 2 else (0,) * image.shape[2]
+
+    cv2.circle(
+        image,
+        center,
+        scaled_radius,
+        color=black,
+        thickness=int(border_thickness),
+        lineType=cv2.LINE_AA,
+        shift=shift,
+    )
+
+    return image
 
 
 

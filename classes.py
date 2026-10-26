@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from constants import *
+from constants_rads import *
 import math
 
 
@@ -11,30 +12,38 @@ class Point:
     def __str__(self) -> str:
         return f"({round(self.x)}, {round(self.y)})"
 
+@dataclass
+class Line:
+    pt1 : Point = field(default_factory=lambda: Point(0, 0))
+    pt2 : Point = field(default_factory=lambda: Point(0, 0))
 
 
 
-def get_point_int_tuple(point: Point) -> tuple[int,int]:
+def get_point_int_tuple(point: Point) -> tuple[int, int]:
     return (int(point.x), int(point.y))
+
+
+
+
 
 @dataclass
 class Rectangle:
     width: int = 0
     height: int = 0
     top_left: Point = field(default_factory=lambda: Point(0, 0))
-    #center: Point = Point(top_left.x + width / 2, top_left.y + height / 2)
+    # center: Point = Point(top_left.x + width / 2, top_left.y + height / 2)
 
 
 @dataclass
 class DetectedObject:
-    width_px : int = 0
-    area_px : int = 0
+    width_px: int = 0
+    area_px: int = 0
     center_pos_on_screen_px: Point = field(default_factory=lambda: Point(0, 0))
 
-    distance_from_bot : float = 0
-    bearing_rad : float = 0
+    distance_from_bot: float = 0
+    bearing_rad: float = 0
 
-    pos_wrt_bot : Point = field(default_factory=lambda: Point(0, 0))
+    pos_wrt_bot: Point = field(default_factory=lambda: Point(0, 0))
 
     def get_pos_wrt_bot(self):
         self.pos_wrt_bot.x = self.distance_from_bot * math.cos(self.bearing_rad)
@@ -46,29 +55,22 @@ class DetectedObject:
         pass
 
 
-
 @dataclass
 class FieldState:
 
-    found_dict  = {
-        BALL_RED : False,
-        BALL_YELLOW : False,
-        HAT_BLUE : False,
-        HAT_YELLOW : False,
-        HAT_FUCHSIA : False,
-        HAT_GREEN : False,
-    }
-
+    found_dict = {}
 
     timestep: float = 0
 
     our_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
-    our_bot_bearing_rad: float = 0
+    our_bot_bearing_rad: float = BEARING_NORTH
 
     their_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
-    their_bot_bearing_rad: float = 0
+    their_bot_bearing_rad: float = BEARING_SOUTH
 
     ball_pos_in: Point = field(default_factory=lambda: Point(0, 0))
+    ball_vel_x_in_per_s : float = 0
+    ball_vel_y_in_per_s : float = 0
 
     def to_dict(self) -> dict:
         field_state_dict = {
@@ -96,3 +98,5 @@ class FieldState:
 
         return f"State(our_bot_pos: {self.our_bot_pos_in}, their_bot_pos: {self.their_bot_pos_in}, ball_pos: {self.ball_pos_in})"
         pass
+
+

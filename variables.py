@@ -1,3 +1,5 @@
+import numpy as np
+
 # Programming settings
 DEBUG_PRINT: bool = True
 USE_DRAWN_FIELD : bool = True
@@ -22,5 +24,23 @@ search_for_hat_green: bool = False
 
 ### Draw to Field
 draw_ball_red : bool = True
+draw_ball_yellow : bool = True
 draw_our_bot : bool = True
-draw_their_bot : bool = True
+draw_their_bot : bool = False
+
+
+### Our robot
+in_per_sec_strafe : float = 5
+in_per_sec_forward : float = 10
+in_per_sec_backward : float = 7
+rad_per_sec_rotation : float = np.pi / 2
+
+# movement constants
+BOT_ACTION = "BOT_ACTION"
+BOT_ACTION_DURATION_SEC = "BOT_ACTION_DURATION_SEC"
+BOT_FORWARD = "BOT_FORWARD"
+BOT_BACKWARD = "BOT_BACKWARD"
+BOT_ROTATE_LEFT = "BOT_ROTATE_LEFT"
+BOT_ROTATE_RIGHT = "BOT_ROTATE_RIGHT"
+BOT_STRAFE_LEFT = "BOT_STRAFE_LEFT"
+BOT_STRAFE_RIGHT = "BOT_STRAFE_RIGHT"
