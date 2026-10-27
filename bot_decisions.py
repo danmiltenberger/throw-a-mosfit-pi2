@@ -2,6 +2,7 @@ from classes import FieldState, Point, BotCommand
 from tam_library_analyze_field import is_within_rect
 from tam_library_draw_field import draw_field_from_field_state, get_field_frame
 from tam_library import show_frame
+from field_state_save_and_load import save_fieldstates_to_csv
 from constants import *
 from constants_points import *
 from constants_rads import *
@@ -15,6 +16,7 @@ import time
 def main():
 
     # initial state
+    print("creating initial state")
     fieldstate = FieldState(
         our_bot_pos_in= FIELD_GOALBOX_CENTER_BOTTOM,
         our_bot_bearing_rad= BEARING_NORTH_EAST,
@@ -23,48 +25,68 @@ def main():
         ball_vel_y_in_per_s= 2,
     )
 
-    # initial bot command placeholder (do nothing for 0 seconds)
+    # initial bot command placeholder (aka do nothing for 0 seconds)
     bot_command = BotCommand()
 
     original_field = get_field_frame()
 
     # start the timing logic
-    time_start = time.perf_counter()
-    time_command_started = time_start
+    previous_time = time.perf_counter()
+    action_start_time = previous_time
+    time_at_start = previous_time
 
-    waiting_for_command : bool = True
+    old_print_str = ""
 
-    
+
+    save_to_csv : bool = False
+
 
     while True:
 
+        current_time = time.perf_counter()
+        action_elapsed_time = current_time - action_start_time
+        total_elapsed_time = current_time - time_at_start
+        dt = current_time - previous_time
+        previous_time = current_time
+
+
         field_frame = original_field.copy()
 
-        time_current = time.perf_counter()
-        time_elapsed = time_current - time_start
 
-        time_command_elasped = time_current - time_command_started
+        # if the elapsed time is greater than the command time, get a new command
+        if action_elapsed_time >= bot_command.dur_sec:
+            previous_time = current_time
+            action_start_time = current_time
 
- 
-        # if the elapsed time is greater than the command time, get a new one
-        if time_command_elasped >= bot_command.dur_sec:
-            waiting_for_command = True
-        else:
-            waiting_for_command = False
-
-        # get the next command after the command is completed
-        if waiting_for_command:
             bot_command = get_bot_command(fieldstate)
 
-        # update the position with the current command (example, 1.8 seconds through DRIVE_FORWARD_2sec)
-        fieldstate = update_our_bot_position(fieldstate, bot_command)
+
+        # update the position with the current command 
+        fieldstate = update_our_bot_position(fieldstate, bot_command, dt)
 
         # update the position of the ball (like having it pretend to bounce off the wall)
         fieldstate = update_ball_position(fieldstate)
 
         # show the user what is happening
         field_frame = draw_field_from_field_state(field_frame= field_frame, state= fieldstate)
+        
+        # print information to terminal
+        time_elapsed_str = f"{round(total_elapsed_time,1)}\t"
+        command_str = f"{bot_command.com_str}\t"
+        dur_total_str = f"t: {round(action_elapsed_time,1)}/{round(bot_command.dur_sec,1)}\t"
 
+        print_str = time_elapsed_str + command_str + dur_total_str
+
+        if print_str != old_print_str:
+            old_print_str = print_str
+            print(print_str)
+
+        # optionally save to csv
+        if save_to_csv:
+            save_fieldstates_to_csv(fieldstates= [fieldstate], filepath="field_states/bot_decisions.csv")
+        
+
+        # show to user and handle quitting
         cv2.imshow(mat=field_frame, winname="bot_decisions")
         
         key = cv2.waitKey(10) & 0xFF
@@ -76,12 +98,51 @@ def main():
             break
 
 
-def update_our_bot_position(fieldstate: FieldState, bot_command: BotCommand) -> FieldState:
+def update_our_bot_position(fieldstate: FieldState, command: BotCommand, dt: float) -> FieldState:
     # update the bot with the given command
 
-    # basically implement many of the processes in bot_on_field
+    bot_command = command.com_str
+    our_bot_bearing = fieldstate.our_bot_bearing_rad
+    our_bot_field_pos = fieldstate.our_bot_pos_in
 
-    # TODO
+    # assume zero, to overwrite below
+    vel_x = 0
+    vel_y = 0
+
+    if bot_command == BOT_FORWARD:
+        # adjust the x and y from the bearing to the field
+
+        vel_x = in_per_sec_forward * math.cos(our_bot_bearing)
+        vel_y = in_per_sec_forward * math.sin(our_bot_bearing)
+
+    elif bot_command == BOT_BACKWARD:
+        vel_x = in_per_sec_backward * math.cos(our_bot_bearing) * -1
+        vel_y = in_per_sec_backward * math.sin(our_bot_bearing) * -1
+
+
+    elif bot_command == BOT_STRAFE_LEFT:
+        strafe_offset_rad = np.pi / 2
+        vel_x = in_per_sec_strafe * math.cos(our_bot_bearing + strafe_offset_rad)
+        vel_y = in_per_sec_strafe * math.sin(our_bot_bearing + strafe_offset_rad)
+
+    elif bot_command == BOT_STRAFE_RIGHT:
+        strafe_offset_rad = -np.pi / 2
+        vel_x = in_per_sec_strafe * math.cos(our_bot_bearing + strafe_offset_rad)
+        vel_y = in_per_sec_strafe * math.sin(our_bot_bearing + strafe_offset_rad)
+
+    elif bot_command == BOT_ROTATE_LEFT: 
+        fieldstate.our_bot_bearing_rad += rad_per_sec_rotation * dt
+
+    elif bot_command == BOT_ROTATE_RIGHT:
+        fieldstate.our_bot_bearing_rad += rad_per_sec_rotation * dt * -1
+
+
+    else:
+        print(f"unexpected bot command, recieved {bot_command}. Set vel x and y to zero")
+
+    our_bot_field_pos.x += vel_x * dt
+    our_bot_field_pos.y += vel_y * dt
+
 
     return fieldstate
 
@@ -124,7 +185,9 @@ def get_bot_command(fieldstate: FieldState) -> BotCommand:
 
 
 
-    # TODO
+    # TODO, this is just hard coded now
+    this_command.com_str = BOT_FORWARD
+    this_command.dur_sec = 3
 
 
     return this_command
