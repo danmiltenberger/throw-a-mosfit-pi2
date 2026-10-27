@@ -1,28 +1,133 @@
-from classes import FieldState, Point
+from classes import FieldState, Point, BotCommand
 from tam_library_analyze_field import is_within_rect
 from tam_library_draw_field import draw_field_from_field_state, get_field_frame
 from tam_library import show_frame
 from constants import *
 from constants_points import *
 from constants_rads import *
-from variables import *
 from variables_robot import *
+from variables import *
+import cv2
+import time
 
 
 
 def main():
-    # test these different functions for different states
+
+    # initial state
     fieldstate = FieldState(
         our_bot_pos_in= FIELD_GOALBOX_CENTER_BOTTOM,
         our_bot_bearing_rad= BEARING_NORTH_EAST,
-        ball_pos_in= FIELD_CENTER
+        ball_pos_in= FIELD_CENTER,
+        ball_vel_x_in_per_s= 3,
+        ball_vel_y_in_per_s= 2,
     )
 
-    pick_best_movement_commands(fieldstate= fieldstate, desired_pos= fieldstate.ball_pos_in)
+    # initial bot command placeholder (do nothing for 0 seconds)
+    bot_command = BotCommand()
 
-    field_frame = get_field_frame()
-    field_frame = draw_field_from_field_state(field_frame, fieldstate)
-    show_frame(field_frame)
+    original_field = get_field_frame()
+
+    # start the timing logic
+    time_start = time.perf_counter()
+    time_command_started = time_start
+
+    waiting_for_command : bool = True
+
+    
+
+    while True:
+
+        field_frame = original_field.copy()
+
+        time_current = time.perf_counter()
+        time_elapsed = time_current - time_start
+
+        time_command_elasped = time_current - time_command_started
+
+ 
+        # if the elapsed time is greater than the command time, get a new one
+        if time_command_elasped >= bot_command.dur_sec:
+            waiting_for_command = True
+        else:
+            waiting_for_command = False
+
+        # get the next command after the command is completed
+        if waiting_for_command:
+            bot_command = get_bot_command(fieldstate)
+
+        # update the position with the current command (example, 1.8 seconds through DRIVE_FORWARD_2sec)
+        fieldstate = update_our_bot_position(fieldstate, bot_command)
+
+        # update the position of the ball (like having it pretend to bounce off the wall)
+        fieldstate = update_ball_position(fieldstate)
+
+        # show the user what is happening
+        field_frame = draw_field_from_field_state(field_frame= field_frame, state= fieldstate)
+
+        cv2.imshow(mat=field_frame, winname="bot_decisions")
+        
+        key = cv2.waitKey(10) & 0xFF
+
+        if key in (27, ord("q")):
+            break
+
+        if cv2.getWindowProperty("bot_decisions", cv2.WND_PROP_VISIBLE) < 1:
+            break
+
+
+def update_our_bot_position(fieldstate: FieldState, bot_command: BotCommand) -> FieldState:
+    # update the bot with the given command
+
+    # basically implement many of the processes in bot_on_field
+
+    # TODO
+
+    return fieldstate
+
+
+def update_ball_position(field_state: FieldState)-> FieldState:
+    # update the ball position by considering the speed and position
+    # also consider if the ball is theirs (and moves with their bot) or ours (and moves with ours)
+
+
+    # TODO
+    return field_state
+
+
+
+def get_bot_command(fieldstate: FieldState) -> BotCommand:
+
+    # placeholder to then modify
+    this_command = BotCommand()
+
+    # determine who has the ball to then make decisions
+
+    # if we have the ball
+
+        # if we are far from the goal
+
+
+        # if we are close to the goal
+
+
+    # if they have the ball
+        # move to the goal
+    
+
+
+    # if neither have the ball
+        # if we see the ball, move to it
+
+
+        # if we don't, look for it
+
+
+
+    # TODO
+
+
+    return this_command
 
 
 def get_command(fieldstate: FieldState) -> str:
@@ -141,7 +246,7 @@ def pick_best_movement_commands(fieldstate: FieldState, desired_pos: Point, N: i
     pass
 
 
-def consider_command(fieldstate: FieldState, command_str: str, duration_sec: float = 2) -> Point:
+def get_end_pos_from_command(fieldstate: FieldState, command_str: str, duration_sec: float = 2) -> Point:
     '''given a command and duration, return the expected end position'''
 
     # default to nothing happening
@@ -161,11 +266,18 @@ def consider_command(fieldstate: FieldState, command_str: str, duration_sec: flo
     return pos_end
         
 
+def has_N_seconds_passed(time_start: float, N_sec: float) -> bool:
+    '''has N seconds passed since the time start?'''
+    current_time = time.perf_counter()
 
+    if abs(time_start - current_time) >= N_sec:
+        return True
+    else:
+        return False
 
 
 def get_closest_point_to_desired_pos(point_list: list[Point], desired_pos: Point) -> Point:
-    '''iterate through the points and find the shortest hypot'''
+    '''iterate through the points and find the shortest hypotenuse'''
 
     best_dis : float = np.inf
     best_point : Point = point_list[0]
