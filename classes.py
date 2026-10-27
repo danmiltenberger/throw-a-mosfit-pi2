@@ -88,6 +88,9 @@ class FieldState:
     ball_is_ours : bool = False
     ball_is_theirs : bool = False
 
+    # defining what we can see (set all to true if doing a purely code implementation)
+    ball_is_seen : bool = True
+
     def to_dict(self) -> dict:
         field_state_dict = {
             TIMESTEP: self.timestep,

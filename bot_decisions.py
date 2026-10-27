@@ -1,5 +1,5 @@
-from classes import FieldState, Point, BotCommand
-from tam_library_analyze_field import is_within_rect
+from classes import FieldState, Point, BotCommand, get_capture_zone_point
+from tam_library_analyze_field import is_within_rect, is_within_circ
 from tam_library_draw_field import draw_field_from_field_state, get_field_frame
 from tam_library import show_frame
 from field_state_save_and_load import save_fieldstates_to_csv
@@ -10,7 +10,7 @@ from variables_robot import *
 from variables import *
 import cv2
 import time
-
+import random
 
 
 def main():
@@ -18,9 +18,9 @@ def main():
     # initial state
     print("creating initial state")
     fieldstate = FieldState(
-        our_bot_pos_in= FIELD_GOALBOX_CENTER_BOTTOM,
-        our_bot_bearing_rad= BEARING_NORTH_EAST,
-        ball_pos_in= FIELD_CENTER,
+        our_bot_pos_in= Point(10,10),
+        our_bot_bearing_rad= BEARING_NORTH,
+        ball_pos_in= Point(50,50),
         ball_vel_x_in_per_s= 3,
         ball_vel_y_in_per_s= 2,
     )
@@ -36,6 +36,7 @@ def main():
     time_at_start = previous_time
 
     old_print_str = ""
+    status = "begin"
 
 
     save_to_csv : bool = False
@@ -58,7 +59,7 @@ def main():
             previous_time = current_time
             action_start_time = current_time
 
-            bot_command = get_bot_command(fieldstate)
+            bot_command, status = get_bot_command(fieldstate)
 
 
         # update the position with the current command 
@@ -72,14 +73,14 @@ def main():
         
         # print information to terminal
         time_elapsed_str = f"{round(total_elapsed_time,1)}\t"
-        command_str = f"{bot_command.com_str}\t"
+        command_str = f"{status}\t"
         dur_total_str = f"t: {round(action_elapsed_time,1)}/{round(bot_command.dur_sec,1)}\t"
 
         print_str = time_elapsed_str + command_str + dur_total_str
 
-        if print_str != old_print_str:
-            old_print_str = print_str
-            print(print_str)
+        # if print_str != old_print_str:
+        #     old_print_str = print_str
+        #     print(print_str)
 
         # optionally save to csv
         if save_to_csv:
@@ -156,79 +157,133 @@ def update_ball_position(field_state: FieldState)-> FieldState:
     return field_state
 
 
+def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, deg_tol: float = 2, dur_max_sec : float = 3, print_verbose: bool = False) -> BotCommand:
+    '''
+    return a command to rotate to point at the end position OR 
+    return a command to drive to that point'''
 
-def get_bot_command(fieldstate: FieldState) -> BotCommand:
+    bot_command = BotCommand()
+
+    delta_y = fieldstate.our_bot_pos_in.y - end_pos.y
+    delta_x = fieldstate.our_bot_pos_in.y - end_pos.y
+    rad_tolerance = math.radians(deg_tol)
+    command_duration : float = 0
+
+    # determine angle to end position
+    try:
+        angle_from_3oclock_to_pos = math.atan(delta_y/delta_x)
+    except ZeroDivisionError:
+        angle_from_3oclock_to_pos = np.pi/2
+
+    angle_wrt_bot = angle_from_3oclock_to_pos - fieldstate.our_bot_bearing_rad
+
+    # if within an acceptable angle tolerance, drive to target
+    if -rad_tolerance <= angle_wrt_bot <= rad_tolerance:
+        bot_command.com_str = BOT_FORWARD
+
+        #x = vel*t, so t = x/vel
+        dis_to_target = math.hypot(delta_x, delta_y)
+        command_duration = dis_to_target / in_per_sec_forward 
+
+    # otherwise rotate to the target
+    else:
+
+        # if too far right,
+        if angle_wrt_bot > rad_tolerance:
+            bot_command.com_str = BOT_ROTATE_LEFT
+
+        # if too far left
+        elif angle_wrt_bot < -rad_tolerance:
+            bot_command.com_str = BOT_ROTATE_RIGHT
+
+        # theta = theta_dot * t, so t = theta/ theta_dot
+        command_duration = abs(angle_wrt_bot / rad_per_sec_rotation)
+
+
+    # double check that it won't take too long to execute the command
+    if command_duration > dur_max_sec:
+        bot_command.dur_sec = dur_max_sec
+    else:
+        bot_command.dur_sec = command_duration
+
+    if print_verbose:
+        obj_bearing = f"obj deg: {round(math.degrees(angle_from_3oclock_to_pos))}"
+        bot_bearing = f"bot deg: {round(math.degrees(fieldstate.our_bot_bearing_rad))}"
+        delta_bearing = f"angle_wrt deg: {round(math.degrees(angle_wrt_bot))}"
+        bot_pos = f"bot pos: {fieldstate.our_bot_pos_in}"
+        obj_pos = f"obj pos: {end_pos}"
+        com = f"{bot_command.com_str} {round(bot_command.dur_sec,1)}"
+
+        print(obj_bearing, bot_bearing, delta_bearing, bot_pos, obj_pos, com, sep="\t")
+
+
+
+
+    return bot_command
+
+
+def get_bot_command(fieldstate: FieldState) -> tuple[BotCommand, str]:
 
     # placeholder to then modify
     this_command = BotCommand()
 
-    # determine who has the ball to then make decisions
+    status = "UNDECIDED"
 
-    # if we have the ball
-
-        # if we are far from the goal
-
-
-        # if we are close to the goal
-
-
-    # if they have the ball
-        # move to the goal
-    
-
-
-    # if neither have the ball
-        # if we see the ball, move to it
-
-
-        # if we don't, look for it
-
-
-
-    # TODO, this is just hard coded now
-    this_command.com_str = BOT_FORWARD
-    this_command.dur_sec = 3
-
-
-    return this_command
-
-
-def get_command(fieldstate: FieldState) -> str:
-    '''analyze the field and determine what actions to take'''
-
-    ## determine who has the ball
+    # determine who has the ball so we can make decisions
     fieldstate = determine_ball_ownership(fieldstate)
 
 
-    # if we have it, move to their goal to try and score
+    # if we have the ball
     if fieldstate.ball_is_ours:
 
-        if is_close_enough_to_goal(fieldstate.ball_pos_in):
-            command_kick = get_command_to_kick(fieldstate)
-            return command_kick
 
-        command_towards_their_goal = get_command_to_their_goal(fieldstate)
+        # draw the ball in our capture zone
+        fieldstate = get_capture_zone_point(fieldstate)
+        fieldstate.ball_pos_in = fieldstate.capture_zone_center
 
-        return command_towards_their_goal
+        # if we are close to the goal, kick
+        if is_close_enough_to_goal(fieldstate.our_bot_pos_in):
+            this_command.com_str = BOT_KICK
+            status = "kicking ball"
 
-    # if they have it, move to our goal to try and block
-    elif fieldstate.ball_is_theirs:
+        # otherwise move to their goal
+        else:
+            this_command = get_bot_command_straight_line(
+                fieldstate=fieldstate, 
+                end_pos= FIELD_GOALBOX_CENTER_TOP)
+            status = "moving ball closer to their goal"
 
-        command_towards_our_goal = get_command_to_our_goal(fieldstate)
-        return command_towards_our_goal
+    # if they have the ball
+    if fieldstate.ball_is_theirs:
 
-    # if we don't know where it is, look for it
-    elif (fieldstate.ball_is_ours == False) and (fieldstate.ball_is_theirs == False):
-        command_search_for_ball = get_command_search_for_ball(fieldstate)
-        return command_search_for_ball
+        # move to our goal to block
+        this_command = get_bot_command_straight_line(fieldstate=fieldstate, end_pos= FIELD_GOALBOX_CENTER_BOTTOM)
+        status = "moving to our goal to defend"
+    
 
-    else:
-        print("unable to determine action to take")
-        return "NO_COMMAND"
+    # if neither have the ball
+    if (fieldstate.ball_is_ours == False) and (fieldstate.ball_is_theirs == False):
+
+        # if we see the ball, move to it
+        if fieldstate.ball_is_seen:
+            this_command = get_bot_command_straight_line(fieldstate=fieldstate, end_pos= fieldstate.ball_pos_in)
+            status = "moving to ball"
+
+
+        # if we don't, look for it
+        else:
+            status = "looking for ball"
+
+
+    print(status, this_command.com_str, round(this_command.dur_sec,2))
+
+    return this_command, status
+
 
 
 def determine_ball_ownership(fieldstate: FieldState):
     '''update the fieldstate with the ball_is_ours / ball_is_theirs True or False's'''
+
 
     # TODO
 
@@ -236,29 +291,28 @@ def determine_ball_ownership(fieldstate: FieldState):
 
     # if we have the limit switch activate, that is a clear confirmation that we have it
 
-    # also if the ball is within our code defined capture zone, we should consider it ours 
-    # with some percentage of uncertainty
+    # if the ball is within our code defined capture zone, we should consider it ours 
+    fieldstate = get_capture_zone_point(fieldstate)
+
+    if is_within_circ(
+        point_in_q=fieldstate.ball_pos_in, 
+        circle_center=fieldstate.capture_zone_center, 
+        cicle_rad=fieldstate.our_bot_capture_zone_radius):
+
+        fieldstate.ball_is_ours = True
+
+        return fieldstate
+    
+
+
+    #elif 
+    # TODO check if within opponent's capture zone
+
+    else:
+        fieldstate.ball_is_ours = False
 
     return fieldstate
 
-
-def get_command_to_their_goal(fieldstate: FieldState) -> str:
-    '''determine a forward/backward/strafe/angle etc sequence to move toward their goal'''
-
-    # FIXME
-    return BOT_FORWARD
-
-
-def get_command_to_our_goal(fieldstate: FieldState) -> str:
-    '''determine a forward/backward/strafe/angle etc sequence to move toward our goal'''
-
-    # FIXME
-    return BOT_BACKWARD
-
-
-def get_command_search_for_ball(fieldstate: FieldState) -> str:
-    '''with a given guess on where bot thinks the ball is, look for ball'''
-    return BOT_ROTATE_LEFT
 
 
 def is_close_enough_to_goal(pos: Point) -> bool:
@@ -281,53 +335,6 @@ def is_close_enough_to_goal(pos: Point) -> bool:
         return True
 
 
-def get_command_to_kick(field_state: FieldState):
-
-
-    # consider angle etc
-    # TODO
-    return BOT_KICK
-
-
-def pick_best_movement_commands(fieldstate: FieldState, desired_pos: Point, N: int = 3, dt_sec: float = 2):
-    '''consider N combinations of movements and rotations. Pick the one that has the end position closed to desired position'''
-
-    # do more interesting considerations like curves etc later. Right now, turn to target and drive toward it.
-    delta_x = desired_pos.x - fieldstate.our_bot_pos_in.x
-    delta_y = desired_pos.y - fieldstate.our_bot_pos_in.y
-
-    try:
-        angle_from_3oclock_to_pos = math.atan(delta_y/delta_x)
-    except ZeroDivisionError:
-        angle_from_3oclock_to_pos = np.pi/2
-
-    angle_wrt_bot = angle_from_3oclock_to_pos - fieldstate.our_bot_bearing_rad
-
-    print("degrees from horizontal", round(math.degrees(angle_from_3oclock_to_pos)))
-    print("degrees wrt bot bearing", round(math.degrees(angle_wrt_bot)))
-
-    pass
-
-
-def get_end_pos_from_command(fieldstate: FieldState, command_str: str, duration_sec: float = 2) -> Point:
-    '''given a command and duration, return the expected end position'''
-
-    # default to nothing happening
-    pos_end : Point = fieldstate.our_bot_pos_in
-    bot_pos_start : Point = fieldstate.our_bot_pos_in
-    bot_bearing : float = fieldstate.our_bot_bearing_rad
-
-    if command_str == BOT_FORWARD:
-        displacement = in_per_sec_forward * duration_sec
-        pos_end.x = bot_pos_start.x + displacement * math.cos(bot_bearing)
-        pos_end.y = bot_pos_start.y + displacement * math.sin(bot_bearing)
-
-    # TODO FIXME
-    # add considerations for the other commands
-
-
-    return pos_end
-        
 
 def has_N_seconds_passed(time_start: float, N_sec: float) -> bool:
     '''has N seconds passed since the time start?'''
