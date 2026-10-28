@@ -2,6 +2,8 @@ import time
 import serial
 from I2C_write import write_lcd_lines
 
+# to get the port run >python3 -m serial.tools.list_ports -v
+
 
 def send_to_arduino(connection, message):
     """Send one line and return the Arduino's response."""
