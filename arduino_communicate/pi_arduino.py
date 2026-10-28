@@ -1,5 +1,6 @@
 import time
 import serial
+from I2C_write import write_lcd_lines
 
 
 def send_to_arduino(connection, message):
@@ -35,6 +36,12 @@ def main():
 
         response = send_to_arduino(arduino, send_str)
         print("Arduino replied:", response)
+
+    write_lcd_lines([
+        f"RPi sent: {send_str}",
+        f"Ard rciv: {response}",
+    ])
+    
 
 if __name__ == "__main__":
     main()
