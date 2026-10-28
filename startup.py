@@ -12,6 +12,8 @@ def startup():
         f"lets get to work!",
     ]
 
+    write_lcd_lines(write_lines)
+
     print("LCD startup function ran.", flush=True)
 
 
