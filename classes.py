@@ -91,6 +91,11 @@ class FieldState:
     # defining what we can see (set all to true if doing a purely code implementation)
     ball_is_seen : bool = True
 
+    # define what position and bearing the bot wants to achieve
+    our_bot_target_pos : Point = field(default_factory=lambda: Point(0, 0))
+    our_bot_target_rad : float = 0
+    angle_to_target : float = 0
+
     def to_dict(self) -> dict:
         field_state_dict = {
             TIMESTEP: self.timestep,

@@ -29,5 +29,10 @@ draw_ball_yellow : bool = True
 draw_our_bot : bool = True
 draw_our_bot_capture_zone : bool = False
 draw_their_bot : bool = False
+draw_target_pos : bool = True
 
+draw_arrow_to_target : bool = False
 
+### Write to field
+write_ball_red : bool = False
+write_our_bot : bool = False

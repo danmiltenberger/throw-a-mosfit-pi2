@@ -207,6 +207,10 @@ def draw_centered_octagon(
     return frame
 
 
+
+
+
+
 def draw_empty_field(
     is_show_image: bool = False,
     draw_centerpoints: bool = False,
@@ -520,6 +524,8 @@ def draw_field_from_field_state(
 
         if state.ball_is_ours:
             outline_color = OUR_TEAM_COLOR
+
+            state = get_capture_zone_point(state)
             state.ball_pos_in= state.capture_zone_center
 
         elif state.ball_is_theirs:
@@ -539,6 +545,20 @@ def draw_field_from_field_state(
             radius= convert_to_px(BALL_RED_RADIUS_IN)
         )
 
+        if write_ball_red:
+            list_text = [
+                f"xdot: {round(state.ball_vel_x_in_per_s,1)}",
+                f"ydot: {round(state.ball_vel_y_in_per_s,1)}",
+                f"pos: {state.ball_pos_in}"
+            ]
+
+            draw_left_aligned_text(
+                image= field_frame,
+                center_point= ball_pos_px,
+                lines= list_text,
+                x_offset= convert_to_px(BALL_RED_RADIUS_IN * 1.2)
+                )
+
     if draw_our_bot_capture_zone:
 
         state = get_capture_zone_point(state)
@@ -551,8 +571,6 @@ def draw_field_from_field_state(
             image= field_frame,
             radius= convert_to_px(state.our_bot_capture_zone_radius)
         )
-
-
 
     if draw_our_bot:
 
@@ -571,6 +589,23 @@ def draw_field_from_field_state(
             border_thickness=1,
         )
 
+        if write_our_bot:
+
+            list_text = [
+                f"pos: {round(state.our_bot_pos_in.x,1)},{round(state.our_bot_pos_in.y,1)}",
+                f"target: {state.our_bot_target_pos}",
+                f"ang: {round(math.degrees(state.angle_to_target))}",
+                f"bearing: {round(math.degrees(state.our_bot_bearing_rad))}",
+            ]
+
+            draw_left_aligned_text(
+                image= field_frame,
+                center_point= our_bot_pos_px,
+                lines= list_text,
+                x_offset= convert_to_px(BOT_RADIUS_IN * 1.2)
+                )
+
+
     if draw_their_bot:
         their_bot_pos_x = inches_to_screen(state.their_bot_pos_in)
 
@@ -586,6 +621,18 @@ def draw_field_from_field_state(
             rotation_deg=math.degrees(state.their_bot_bearing_rad),
             border_thickness=1,
         )
+
+    if draw_target_pos:
+        target_pos_px = inches_to_screen(state.our_bot_target_pos)
+
+        field_frame = draw_transparent_circle(
+            alpha= 1,
+            circle_center= target_pos_px,
+            color= GREEN,
+            image= field_frame,
+            radius= convert_to_px(1)
+        )
+
 
     return field_frame
 
@@ -657,6 +704,65 @@ def draw_transparent_circle(
     )
 
     return cv2.addWeighted(overlay, alpha, image, 1.0 - alpha, 0)
+
+
+def draw_left_aligned_text(
+    image,
+    lines: list[str],
+    center_point : Point,
+    x_offset: int = 0,
+    *,
+    font=cv2.FONT_HERSHEY_SIMPLEX,
+    font_scale: float = 0.7,
+    color: tuple[int, int, int] = (255, 255, 255),
+    thickness: int = 2,
+    line_gap: int = 6,
+):
+    """Draw lines left-aligned at x + x_offset, centered vertically at y.
+
+    Each item occupies one line; empty strings preserve a blank line.
+    Positive x_offset moves the text right; negative moves it left.
+    Modifies image in place and returns it.
+    """
+    if not lines:
+        return image
+
+    if line_gap < 0:
+        raise ValueError("line_gap must be nonnegative")
+
+    sizes = [
+        cv2.getTextSize(line or "Ag", font, font_scale, thickness)
+        for line in lines
+    ]
+    text_height = max(size[0][1] for size in sizes)
+    descent = max(size[1] for size in sizes) + thickness
+
+    line_height = text_height + descent
+    block_height = len(lines) * line_height + (len(lines) - 1) * line_gap
+
+    left_x = round(center_point.x + x_offset)
+    first_baseline = center_point.y - block_height / 2 + text_height
+
+    for i, line in enumerate(lines):
+        if not line:
+            continue
+
+        origin = (
+            left_x,
+            round(first_baseline + i * (line_height + line_gap)),
+        )
+        cv2.putText(
+            image,
+            line,
+            origin,
+            font,
+            font_scale,
+            color,
+            thickness,
+            cv2.LINE_AA,
+        )
+
+    return image
 
 
 if __name__ == "__main__":

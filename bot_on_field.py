@@ -152,6 +152,7 @@ def update_who_has_ball(fieldstate : FieldState) -> FieldState:
         point_in_q=fieldstate.ball_pos_in, 
         circle_center=fieldstate.capture_zone_center, 
         cicle_rad=fieldstate.our_bot_capture_zone_radius):
+        
         fieldstate.ball_is_ours = True
         return fieldstate
 
