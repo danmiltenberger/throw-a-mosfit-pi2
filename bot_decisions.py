@@ -288,6 +288,7 @@ def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, dur_ma
 
 def get_bot_command(fieldstate: FieldState) -> tuple[BotCommand, str]:
 
+
     # placeholder to then modify
     this_command = BotCommand()
 
@@ -295,8 +296,8 @@ def get_bot_command(fieldstate: FieldState) -> tuple[BotCommand, str]:
 
     # determine who has the ball so we can make decisions
     fieldstate = determine_ball_ownership(fieldstate)
-    
 
+ 
     # if we have the ball
     if fieldstate.ball_is_ours:
 

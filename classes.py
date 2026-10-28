@@ -88,8 +88,13 @@ class FieldState:
     ball_is_ours : bool = False
     ball_is_theirs : bool = False
 
-    # defining what we can see (set all to true if doing a purely code implementation)
-    ball_is_seen : bool = True
+    # defining what we saw from the frame
+    ball_is_seen : bool = False
+    their_bot_is_seen : bool = False
+    goalpost_northwest_is_seen : bool = False
+    goalpost_northeast_is_seen : bool = False
+    goalpost_southwest_is_seen : bool = False
+    goalpost_southeast_is_seen : bool = False
 
     # define what position and bearing the bot wants to achieve
     our_bot_target_pos : Point = field(default_factory=lambda: Point(0, 0))

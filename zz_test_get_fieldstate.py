@@ -11,6 +11,7 @@ from tam_library_draw_field import (
 from tam_library_front_and_top_down import convert_to_field
 from classes import FieldState, DetectedObject
 from constants_points import *
+from variables import *
 import cv2
 from constants import *
 import numpy as np
@@ -39,7 +40,6 @@ def test_get_fieldstate_from_frame():
     )
 
     detected_obj = get_detected_object(
-        field_state= field_state,
         hsv_frame= hsv_frame,
         object_name= obj_str
     )
@@ -108,7 +108,92 @@ def annotate_frame_with_obj(frame: np.ndarray, obj: DetectedObject, object_name:
     return frame
 
 
-def search_and_annotate(frame_camera: np.ndarray, search_obj: str,field_state:FieldState) -> np.ndarray:
+def search_and_update_fieldstate(frame_camera: np.ndarray, fieldstate: FieldState, annotate_cam: bool = False) -> FieldState:
+    '''search the frame for the given object and then update the state with the information'''
+
+    write_frame_text : bool = False
+
+    hsv_frame = cv2.cvtColor(frame_camera.copy(), cv2.COLOR_BGR2HSV)
+
+    if search_for_ball_red:
+        obj_str = BALL_RED
+        detected_object = get_detected_object(object_name= obj_str, hsv_frame=hsv_frame)
+
+        if detected_object is None:
+            fieldstate.ball_is_seen = False
+            pass
+
+        else:
+            fieldstate.ball_pos_in = convert_to_field(
+                object_bearing_rad= detected_object.bearing_rad,
+                object_dis= detected_object.distance_from_bot,
+                robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+                robot_pos= fieldstate.our_bot_pos_in
+            )
+            if annotate_cam:
+                frame_camera = annotate_frame_with_obj(
+                    write_text= write_frame_text,
+                    object_name= obj_str,
+                    frame= frame_camera,
+                    obj= detected_object,
+                )
+
+    if search_for_hat_blue:
+        obj_str = HAT_BLUE
+        detected_object = get_detected_object(object_name= obj_str, hsv_frame=hsv_frame)
+        
+        if detected_object is None:
+            fieldstate.their_bot_is_seen = False
+            pass
+
+        else:
+            fieldstate.their_bot_pos_in = convert_to_field(
+                object_bearing_rad= detected_object.bearing_rad,
+                object_dis= detected_object.distance_from_bot,
+                robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+                robot_pos= fieldstate.our_bot_pos_in
+            )
+            if annotate_cam:
+                frame_camera = annotate_frame_with_obj(
+                    write_text= write_frame_text,
+                    object_name= obj_str,
+                    frame= frame_camera,
+                    obj= detected_object,
+                )
+
+
+    if search_for_hat_yellow:
+        obj_str = HAT_YELLOW
+        detected_object = get_detected_object(object_name= obj_str, hsv_frame=hsv_frame)
+        
+        if detected_object is None:
+            fieldstate.their_bot_is_seen = False
+            pass
+
+        else:
+            fieldstate.their_bot_pos_in = convert_to_field(
+                object_bearing_rad= detected_object.bearing_rad,
+                object_dis= detected_object.distance_from_bot,
+                robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+                robot_pos= fieldstate.our_bot_pos_in
+            )
+
+            if annotate_cam:
+                frame_camera = annotate_frame_with_obj(
+                    write_text= write_frame_text,
+                    object_name= obj_str,
+                    frame= frame_camera,
+                    obj= detected_object,
+                )
+
+    if annotate_cam:
+        show_frame(frame_camera)
+
+
+    return fieldstate
+
+
+def search_and_annotate(frame_camera: np.ndarray, search_obj: str) -> np.ndarray:
     '''from the camera frame, look for the given object like BALL_RED
     and annotate the frame by drawing a bounding shape'''
 
@@ -116,7 +201,6 @@ def search_and_annotate(frame_camera: np.ndarray, search_obj: str,field_state:Fi
 
     
     detected_obj= get_detected_object(
-        field_state= field_state,
         object_name= search_obj,
         hsv_frame=hsv_frame
     )
@@ -133,8 +217,6 @@ def search_and_annotate(frame_camera: np.ndarray, search_obj: str,field_state:Fi
     )
 
     return camera_frame_annotated
-
-
 
 
 if __name__ == "__main__":

@@ -65,7 +65,7 @@ def get_contours(hsv, hsv_hi, hsv_lo) -> Sequence[np.ndarray]:
     debugprint(f"hsv_hi: {hsv_hi}, hsv_lo: {hsv_lo}")
     mask = cv2.inRange(hsv, lowerb=hsv_lo, upperb=hsv_hi)
 
-    show_frame(mask, "mask")
+    #show_frame(mask, "mask")
 
     # get the contours from the mask
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -73,7 +73,7 @@ def get_contours(hsv, hsv_hi, hsv_lo) -> Sequence[np.ndarray]:
 
 
 def get_detected_object(
-    field_state: FieldState, object_name: str, hsv_frame
+    object_name: str, hsv_frame
 ) -> DetectedObject | None:
     contours: Sequence[np.ndarray] = get_contours(
         hsv_frame,
@@ -84,11 +84,8 @@ def get_detected_object(
 
     # if there is no contour, this object has not been detected, go to next object
     if best_contour is None:
-        field_state.found_dict[object_name] = False
         return None
-    else:
-        field_state.found_dict[object_name] = True
-
+    
     this_detect = DetectedObject()
 
     if search_dict[object_name][ANALYSIS_SHAPE] == CIRC:

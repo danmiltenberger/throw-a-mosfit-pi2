@@ -1,8 +1,7 @@
 import I2C_LCD_driver
 from time import sleep
 import socket
-import fcntl
-import struct
+from typing import Optional
 
 # Source: https://www.circuitbasics.com/raspberry-pi-i2c-lcd-set-up-and-programming/
 # hostname 10.201.23.91
@@ -21,14 +20,14 @@ mylcd.lcd_clear()
 
 mylcd = I2C_LCD_driver.lcd()
 
-def get_ip_address(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    return socket.inet_ntoa(fcntl.ioctl(
-        s.fileno(),
-        0x8915, 
-        struct.pack('256s', ifname[:15])
-    )[20:24])
-
+def get_ip_address() -> Optional[str]:
+    """Return this device's primary local IPv4 address, or None."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+    except OSError:
+        return None
 mylcd.lcd_display_string("IP Address:", 1) 
 
-mylcd.lcd_display_string(get_ip_address('eth0'), 2)
+mylcd.lcd_display_string(get_ip_address(), 2)
