@@ -765,6 +765,58 @@ def draw_left_aligned_text(
     return image
 
 
+
+def draw_gate(
+    frame: np.ndarray,
+    pivot_point: Point,
+    bearing_rad: float,
+    color : tuple[int,int,int] = BLACK,
+) -> np.ndarray:
+    """Draw a rectangular gate rotating around the midpoint of one end.
+
+    bearing_rad = 0 points right; positive angles rotate clockwise
+    in image coordinates. Modifies and returns frame.
+    """
+    gate_length = 120.0  # pixels
+    gate_width = 20.0    # pixels
+
+    # Corners relative to the pivot, with the gate extending along +x.
+    half_width = gate_width / 2.0
+    corners = np.array(
+        [
+            [0.0, -half_width],
+            [gate_length, -half_width],
+            [gate_length, half_width],
+            [0.0, half_width],
+        ],
+        dtype=np.float64,
+    )
+
+    c, s = np.cos(bearing_rad), np.sin(bearing_rad)
+    rotation = np.array(
+        [
+            [c, -s],
+            [s, c],
+        ]
+    )
+
+    # Rotate around the local origin, then translate to the pivot.
+    pivot = np.array([pivot_point.x, pivot_point.y], dtype=np.float64)
+    corners = corners @ rotation.T + pivot
+    polygon = np.rint(corners).astype(np.int32).reshape((-1, 1, 2))
+
+    cv2.polylines(
+        frame,
+        [polygon],
+        isClosed=True,
+        color=color,
+        thickness=2,
+        lineType=cv2.LINE_AA,
+    )
+
+    return frame
+
+
 if __name__ == "__main__":
     draw_empty_field(is_show_image=True, draw_centerpoints=False, save_image=True)
     draw_empty_field(just_black=True)

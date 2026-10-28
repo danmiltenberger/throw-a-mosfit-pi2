@@ -27,6 +27,8 @@ def debugprint(string: str):
 
 def show_frame(frame: np.ndarray, window_name : str = "Frame"):
     '''wrapper for the 3 line cv2.imshow process'''
+
+    
     cv2.imshow(winname= window_name, mat= frame)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

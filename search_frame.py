@@ -45,10 +45,12 @@ def get_fieldstate_from_frame(
         if ball_object is not None:
             pass  # TODO
 
-    # if search_for_hat_blue:
-    #     hat_object = get_detected_object(HAT_BLUE)
-    #     if hat_object is not None:
-    #         pass # TODO
+    if search_for_hat_blue:
+        hat_object = get_detected_object(
+            field_state= this_frame_field_state, object_name= HAT_BLUE, hsv_frame= hsv
+        )
+        if hat_object is not None:
+            pass # TODO
 
     if append_to_dict:
         append_dict_to_csv(

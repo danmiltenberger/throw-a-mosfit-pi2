@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from classes import FieldState
+from classes import FieldState, BotCommand
 from tam_library import check_button, load_video_as_list_of_frames
 from search_frame import get_fieldstate_from_frame
 from tam_library_draw_field import draw_field_from_field_state, get_field_frame
@@ -9,10 +9,21 @@ from constants_points import *
 from constants_rads import *
 import random
 import math
+from bot_decisions import get_bot_command
 
 
-def play_match():
-    """play the match!"""
+def play_match(vid_path: str = ""):
+    """play the match either from a live feed or from a pre-recorded video"""
+
+    list_fieldstates = []
+
+
+    frame_index : int = 0
+    if vid_path != "":
+        list_frames = load_video_as_list_of_frames(vid_path)
+        is_load_frame = True
+    else:
+        list_frames = []
 
     while True:
 
@@ -20,70 +31,40 @@ def play_match():
         if check_button(NEW_MATCH):
             break   # go back to main loop and wait for next button
 
-        # get the current frame
+        # get the current camera
+        frame = list_frames[frame_index]
+
+        # get the fieldstate from the frame
+        this_fieldstate = get_fieldstate_from_frame(frame)
 
         # get the past n field_states and determine average positions of objects
+        avg_fieldstate = get_average_fieldstate(this_fieldstate, list_fieldstates)
 
-        # determine whether to move or shoot
+        bot_command, status = get_bot_command(avg_fieldstate)
+        send_to_arduino(bot_command)
+        
 
-        # if moving, determine the desired position on the field
-
-        # generate a path from current position to desired position
-
-        # determine commands to arduino to follow the path
-
-
-
-    # TODO
     pass
 
 
-def play_virtual_match(video_path: str):
-    '''
-    'play' the match with each frame from a given video. 
-    NO realtime sensor correction
-    '''
 
-    #### One time setup
-
-    list_frames = load_video_as_list_of_frames(video_path)
-
-    # set the initial position with some randomness involved
-    random_x_offset = random.randint(a=-5, b=5)
-    random_y_offset = random.randint(a=-5, b=5)
-    ten_degrees_as_rad = round(math.radians(10))
-    random_bearing_offset = random.randint(-ten_degrees_as_rad, ten_degrees_as_rad)
-
-    start_position = Point(
-        x= FIELD_GOALBOX_CENTER_BOTTOM.x + random_x_offset,
-        y= FIELD_GOALBOX_CENTER_BOTTOM.y + random_y_offset
-    )
-
-    initial_state = FieldState(
-        ball_is_ours= False,
-        ball_is_theirs=False,
-        ball_pos_in= FIELD_CENTER,
-        our_bot_pos_in= start_position,
-        our_bot_bearing_rad= BEARING_NORTH + random_bearing_offset,
-    )
-
-    field_frame = get_field_frame()
-
-    #### Loop through the frames
-    for frame in list_frames:
-        frame : np.ndarray
-
-        field_state = get_fieldstate_from_frame(frame)
-
-        field_frame = draw_field_from_field_state(field_frame= field_frame, state= field_state)
+def get_average_fieldstate(this_fieldstate: FieldState, list_prev : list[FieldState]) -> FieldState:
 
 
-    # get the past n field_states and determine average positions of objects
+    # with the new fieldstate, consider if individual pieces of data are worth keeping
 
-    # determine whether to move or shoot
 
-    # if moving, determine the desired position on the field
+    # blend to get an average position for different objects
 
-    # generate a path from current position to desired position
+    return this_fieldstate
 
-    # determine commands to arduino to follow the path
+
+def get_frame_from_pi():
+
+    # FIX THIS
+    # TODO
+    return
+
+
+def send_to_arduino(bot_command: BotCommand):
+    pass

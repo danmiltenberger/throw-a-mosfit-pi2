@@ -1,5 +1,5 @@
 from classes import FieldState, Point, BotCommand, get_capture_zone_point
-from tam_library_analyze_field import is_within_rect, is_within_circ
+from tam_library_analyze_field import is_within_rect, is_within_circ, is_within_rect, is_on_line
 from tam_library_draw_field import draw_field_from_field_state, get_field_frame
 from tam_library import show_frame
 from field_state_save_and_load import save_fieldstates_to_csv
@@ -21,9 +21,9 @@ def main():
     fieldstate = FieldState(
         our_bot_pos_in= Point(48,12),
         our_bot_bearing_rad= BEARING_NORTH,
-        ball_pos_in= Point(30,30),
-        ball_vel_x_in_per_s= 3,
-        ball_vel_y_in_per_s= 2,
+        ball_pos_in= Point(30,56),
+        ball_vel_x_in_per_s= 10,
+        ball_vel_y_in_per_s= 20,
         ball_is_ours= False,
     )
 
@@ -67,7 +67,7 @@ def main():
         fieldstate = update_our_bot_position(fieldstate, bot_command, dt)
 
         # update the position of the ball (like having it pretend to bounce off the wall)
-        fieldstate = update_ball_position(fieldstate)
+        fieldstate = update_ball_position(fieldstate, dt)
 
         # update the position of the ball if it's ours
         fieldstate = determine_ball_ownership(fieldstate)
@@ -116,7 +116,6 @@ def main():
         if cv2.getWindowProperty("bot_decisions", cv2.WND_PROP_VISIBLE) < 1:
             break
 
-
 def update_our_bot_position(fieldstate: FieldState, command: BotCommand, dt: float) -> FieldState:
     # update the bot with the given command
 
@@ -134,6 +133,7 @@ def update_our_bot_position(fieldstate: FieldState, command: BotCommand, dt: flo
         vel_x = in_per_sec_forward * math.cos(our_bot_bearing)
         vel_y = in_per_sec_forward * math.sin(our_bot_bearing)
 
+
     elif bot_command == BOT_BACKWARD:
         vel_x = in_per_sec_backward * math.cos(our_bot_bearing) * -1
         vel_y = in_per_sec_backward * math.sin(our_bot_bearing) * -1
@@ -144,14 +144,17 @@ def update_our_bot_position(fieldstate: FieldState, command: BotCommand, dt: flo
         vel_x = in_per_sec_strafe * math.cos(our_bot_bearing + strafe_offset_rad)
         vel_y = in_per_sec_strafe * math.sin(our_bot_bearing + strafe_offset_rad)
 
+
     elif bot_command == BOT_STRAFE_RIGHT:
         strafe_offset_rad = -np.pi / 2
         vel_x = in_per_sec_strafe * math.cos(our_bot_bearing + strafe_offset_rad)
         vel_y = in_per_sec_strafe * math.sin(our_bot_bearing + strafe_offset_rad)
 
+
     elif bot_command == BOT_ROTATE_LEFT: 
         fieldstate.our_bot_bearing_rad += rad_per_sec_rotation * dt
         fieldstate.angle_to_target += rad_per_sec_rotation * dt
+
 
     elif bot_command == BOT_ROTATE_RIGHT:
         fieldstate.our_bot_bearing_rad += rad_per_sec_rotation * dt * -1
@@ -168,16 +171,88 @@ def update_our_bot_position(fieldstate: FieldState, command: BotCommand, dt: flo
     return fieldstate
 
 
-def update_ball_position(field_state: FieldState)-> FieldState:
-    # update the ball position by considering the speed and position
-    # also consider if the ball is theirs (and moves with their bot) or ours (and moves with ours)
+def update_ball_position(fieldstate: FieldState, dt: float) -> FieldState:
+
+    # check if the edge of the ball would collide with the wall
+    # first lets just see if it's within a rectangle
+    # that is away from the walls. If so, quick update
+
+    # NOT DONE TODO FIXME
+
+    ball_pos_in = fieldstate.ball_pos_in
+
+    dis_from_sides_in = 12
+
+    quick_rect_top_left = Point(
+        x=FIELD_NORTHWEST_CORNER.x + dis_from_sides_in,
+        y=FIELD_NORTHWEST_CORNER.y - dis_from_sides_in,
+    )
+
+    quick_rect_bot_right = Point(
+        x=FIELD_SOUTHEAST_CORNER.x - dis_from_sides_in,
+        y=FIELD_SOUTHEAST_CORNER.y + dis_from_sides_in,
+    )
+
+    if is_within_rect(
+        point_in_q=ball_pos_in,
+        top_left=quick_rect_top_left,
+        bot_right=quick_rect_bot_right,
+    ):
+
+        # update ball position
+        fieldstate.ball_pos_in.x += fieldstate.ball_vel_x_in_per_s * dt
+        fieldstate.ball_pos_in.y += fieldstate.ball_vel_y_in_per_s * dt
+        # print("is within center field rect")
+        return fieldstate
+
+    # otherwise, let's check the walls
+    edge_left = ball_pos_in.x - BALL_RED_RADIUS_IN
+    edge_right = ball_pos_in.x + BALL_RED_RADIUS_IN
+
+    edge_top = ball_pos_in.y + BALL_RED_RADIUS_IN
+    edge_bottom = ball_pos_in.y - BALL_RED_RADIUS_IN
+
+    # check left
+    if edge_left < FIELD_SOUTHWEST_CORNER.x:
+        fieldstate.ball_vel_x_in_per_s *= -1
+        #print("bounce off left wall")
+
+    # check right
+    elif edge_right > FIELD_SOUTHEAST_CORNER.x:
+        fieldstate.ball_vel_x_in_per_s *= -1
+        #print("bounce off right wall")
+
+    # now examine if it might have gone in the goals
+    elif is_on_line(ball_pos_in, line_goal_top):
+        #print("GOAL TOP")
+        fieldstate.ball_vel_x_in_per_s = 0
+        fieldstate.ball_vel_y_in_per_s = 0
+
+    elif is_on_line(ball_pos_in, line_goal_bot):
+        #print("GOAL BOTTOM")
+        fieldstate.ball_vel_x_in_per_s = 0
+        fieldstate.ball_vel_y_in_per_s = 0
+
+    # check top walls
+    elif edge_top > FIELD_NORTHEAST_CORNER.y:
+        fieldstate.ball_vel_y_in_per_s *= -1
+        #print("bounce off top wall")
+
+    # check bottom walls
+    elif edge_bottom < FIELD_SOUTHEAST_CORNER.y:
+        fieldstate.ball_vel_y_in_per_s *= -1
+        #print("bounce off bottom wall")
+
+    # update ball position
+    fieldstate.ball_pos_in.x += fieldstate.ball_vel_x_in_per_s * dt
+    fieldstate.ball_pos_in.y += fieldstate.ball_vel_y_in_per_s * dt
+
+    #print(fieldstate.ball_pos_in)
+
+    return fieldstate
 
 
-    # TODO
-    return field_state
-
-
-def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, deg_tol: float = 2, dur_max_sec : float = 3, print_verbose: bool = False) -> BotCommand:
+def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, dur_max_sec : float = 2) -> BotCommand:
     '''
     return a command to rotate to point at the end position OR 
     return a command to drive to that point'''
@@ -187,9 +262,7 @@ def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, deg_to
     delta_y = fieldstate.our_bot_pos_in.y - end_pos.y
     delta_x = fieldstate.our_bot_pos_in.y - end_pos.y
   
-        
-
-
+    
     bot_command = get_turn_command(
         robot_position= fieldstate.our_bot_pos_in, 
         target_position= end_pos,
@@ -205,8 +278,6 @@ def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, deg_to
         dis_to_target = math.hypot(delta_x, delta_y)
         command_duration = dis_to_target / in_per_sec_forward 
         bot_command.dur_sec = command_duration
-
-
 
     # double check that it won't take too long to execute the command
     if bot_command.dur_sec > dur_max_sec:
