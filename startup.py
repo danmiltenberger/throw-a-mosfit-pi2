@@ -4,7 +4,7 @@ def startup():
     """Initialize the LCD and display the startup message."""
     # Initialize your LCD here using your existing LCD library.
 
-    ip_address = get_ip_address
+    ip_address = get_ip_address()
 
     write_lines = [
         "Throw a Mosfit!",
