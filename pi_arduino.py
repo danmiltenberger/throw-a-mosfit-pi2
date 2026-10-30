@@ -1,6 +1,7 @@
 import time
 import serial
 from I2C_write import write_lcd_lines
+from classes import BotCommand
 
 # to get the port run >python3 -m serial.tools.list_ports -v
 
@@ -18,12 +19,13 @@ def send_to_arduino(connection, message):
     return reply.decode("utf-8").rstrip("\r\n")
 
 
-def main():
+def send_command_to_arduino(command : BotCommand):
     port = "/dev/ttyACM0"  # Replace with your Arduino's serial port.
 
     print(f"attempting communication with {port}")
 
-    send_str = "hello arduino!"
+    send_str = command.com_str + str(command.dur_sec)
+
     print(f"linux sent: {send_str}")
 
     with serial.Serial(
@@ -46,4 +48,5 @@ def main():
     
 
 if __name__ == "__main__":
-    main()
+    bot_command = BotCommand()
+    send_command_to_arduino(bot_command)

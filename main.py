@@ -23,34 +23,7 @@ def main():
         tamprint("beginning system check")
         system_check()
 
-    # always wait for a specific button
-    WAITING_FOR_START = True
-
-    while True:
-
-        # look for buttons that can START the game
-        if WAITING_FOR_START:
-
-            # read values of buttons and do their special subroutines
-            if check_button(CHANGE_TEAM):
-                change_team()
-
-            if check_button(PENALTY_KICK):
-                penalty_kick()
-
-            # or do the most special subroutine of all, the game!
-            if check_button(START_GAME):
-                WAITING_FOR_START = False
-
-        else:
-            play_match()  # breaks if button(NEW_MATCH)
-            WAITING_FOR_START = True
-
-
-
-
-
-
+    
 
 
 def setup_folders():

@@ -117,6 +117,7 @@ def main():
         if cv2.getWindowProperty("bot_decisions", cv2.WND_PROP_VISIBLE) < 1:
             break
 
+
 def update_our_bot_position(fieldstate: FieldState, command: BotCommand, dt: float) -> FieldState:
     # update the bot with the given command
 
