@@ -4,56 +4,47 @@ import RPi.GPIO as GPIO
 import time
 
 
-first_button_pin = 5
-second_button_pin = 6
-third_button_pin = 13
-fourth_button_pin = 19
-fifth_button_pin = 26
-
-
-now = datetime.now()
-time_str = now.strftime("%Y-%m-%d %H:%M:%S")
-
-
+start_match = 5
+start_kick = 6
+change_team = 13
+change_goal = 19
+end = 26
 
 
 def demo_buttons():
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(first_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(second_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(third_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(fourth_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(fifth_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(start_match, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(start_kick, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(change_team, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(change_goal, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(end, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     try:
         while True:
 
-            button_status = ""
+            time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            if GPIO.input(first_button_pin) == GPIO.LOW:
-                print("button 1 pressed")
-                button_status = "one"
+
+            if GPIO.input(start_match) == GPIO.LOW:
+                button_status = "start match"
                 time.sleep(0.2)  # simple debounce
 
-            if GPIO.input(second_button_pin) == GPIO.LOW:
-                print("button 2 pressed")
-                time.sleep(0.2)  # simple debounce
-                button_status = "two"
+            if GPIO.input(start_kick) == GPIO.LOW:
 
-            if GPIO.input(third_button_pin) == GPIO.LOW:
-                print("button 3 pressed")
                 time.sleep(0.2)  # simple debounce
-                button_status = "three"
+                button_status = "start kick"
 
-            if GPIO.input(fourth_button_pin) == GPIO.LOW:
-                print("button 4 pressed")
+            if GPIO.input(change_team) == GPIO.LOW:
                 time.sleep(0.2)  # simple debounce
-                button_status = "four"
+                button_status = "change team"
 
-            if GPIO.input(fifth_button_pin) == GPIO.LOW:
-                print("button 5 pressed")
+            if GPIO.input(change_goal) == GPIO.LOW:
                 time.sleep(0.2)  # simple debounce
-                button_status = "five"
+                button_status = "change goal"
+
+            if GPIO.input(end) == GPIO.LOW:
+                time.sleep(0.2)  # simple debounce
+                button_status = "back to menu"
 
             write_lcd_lines([
                 "waiting for buttons",

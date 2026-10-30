@@ -10,19 +10,23 @@ rad_per_sec_rotation : float = math.radians(15)
 BOT_ACTION = "BOT_ACTION"
 BOT_ACTION_DURATION_SEC = "BOT_ACTION_DURATION_SEC"
 
-BOT_FORWARD = "BOT_FORWARD"
-BOT_BACKWARD = "BOT_BACKWARD"
-BOT_ROTATE_LEFT = "BOT_ROTATE_LEFT"
-BOT_ROTATE_RIGHT = "BOT_ROTATE_RIGHT"
-BOT_STRAFE_LEFT = "BOT_STRAFE_LEFT"
-BOT_STRAFE_RIGHT = "BOT_STRAFE_RIGHT"
-ARM_OUT = "ARM_OUT"
-ARM_IN = "ARM_IN"       # max of 2 sec
-BOT_KICK = ""
+BOT_FORWARD = "W"
+BOT_BACKWARD = "S"
+BOT_ROTATE_LEFT = "Q"
+BOT_ROTATE_RIGHT = "E"
+BOT_STRAFE_LEFT = "A"
+BOT_STRAFE_RIGHT = "D"
+ARM_OUT = "B"           # TODO handle all the interesting defend code later
+ARM_IN = "I"       # max of 2 sec
+BOT_KICK = "K"
+
+
+
+#q5.0 w3.1 d5, 
 
 # minimum radius of rotation so we don't lose the ball
 
 # rotate with ball as center of rotation
 
 
-example_command = "BOT_FORWARD_5"
+example_command = "FORWARD_5.0"
