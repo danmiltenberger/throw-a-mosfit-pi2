@@ -4,11 +4,11 @@ import RPi.GPIO as GPIO
 import time
 
 
-first_button_pin = 3
-second_button_pin = 4
-third_button_pin = 5
-fourth_button_pin = 6
-fifth_button_pin = 7
+first_button_pin = 5
+second_button_pin = 6
+third_button_pin = 13
+fourth_button_pin = 19
+fifth_button_pin = 26
 
 
 now = datetime.now()
@@ -16,9 +16,8 @@ time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
 
 
-first_button_pin = 17  # BCM GPIO number
 
-def check_button():
+def demo_buttons():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(first_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(second_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -58,6 +57,7 @@ def check_button():
 
             write_lcd_lines([
                 "waiting for buttons",
+                button_status,
 
             ])
 
@@ -69,4 +69,4 @@ def check_button():
         GPIO.cleanup()
 
 if __name__ == "__main__":
-    check_button()
+    demo_buttons()
