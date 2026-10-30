@@ -25,6 +25,7 @@ def main():
         ball_vel_x_in_per_s= 10,
         ball_vel_y_in_per_s= 20,
         ball_is_ours= False,
+        ball_is_seen= True,
     )
 
     # initial bot command placeholder (aka do nothing for 0 seconds)
