@@ -1,4 +1,6 @@
 from I2C_write import write_lcd_lines, get_ip_address
+from tam_library import get_time_str
+
 
 def startup():
     """Initialize the LCD and display the startup message."""
@@ -7,7 +9,7 @@ def startup():
     ip_address = get_ip_address()
 
     write_lines = [
-        "Throw a Mosfit!",
+        "Throw a Mosfit! Time:" + get_time_str(),
         f"ip: {ip_address}",
         f"lets get to work!",
     ]
