@@ -29,6 +29,8 @@ from tam_buttons import (
 
 
 def menu():
+
+    print("setting up pins")
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(start_match, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(start_kick, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -38,6 +40,7 @@ def menu():
 
 
     # Create once at program startup
+    print("setting up picam")
     picam2 = Picamera2()
 
     # RGB888 gives an OpenCV-compatible 3-channel image
@@ -50,6 +53,7 @@ def menu():
     our_left_is_purple = False
     our_team_is_blue = False
 
+    print("entering menu, press buttons to choose a setting")
     try:
         while True:
             button_status = get_button_status()
