@@ -7,6 +7,10 @@ from datetime import datetime
 from variables import DEBUG_PRINT
 
 
+
+
+
+
 def get_time_str() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
