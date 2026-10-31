@@ -14,10 +14,12 @@ def one_v_one_match(match_settings: dict):
         time_current = time.perf_counter()
         time_elapsed = str(round(time_current - time_start,2))
 
+
+
+
         row1 = f"Match! {time_elapsed}"
         row2 = f"US: {match_settings[OUR_TEAM_COLOR]}, LEFT: {match_settings[OUR_LEFT_GOAL]}"
-
-
+        
         row4 = match_settings[BUTTON_STATUS]
 
         write_lcd_lines([row1,row2,row4])
