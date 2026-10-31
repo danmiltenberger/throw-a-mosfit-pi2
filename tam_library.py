@@ -80,6 +80,16 @@ def load_image_as_frame(im_path: str) -> np.ndarray:
     return frame
 
 
+def save_frame_as_png(frame : np.ndarray, file_name : str = ""):
+
+    if file_name == "":
+        file_name = datetime.now().strftime("%Y_%m_%dT%H_%M_%S")
+
+    file_name = "training_data/" + file_name + ".png"
+    cv2.imwrite(file_name, img= frame)
+    print(f"saved {file_name}")
+
+
 def load_video_as_list_of_frames(vid_path: str) -> list[np.ndarray]:
     """Load a local video into a list of BGR uint8 frames.
 
