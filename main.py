@@ -90,6 +90,7 @@ def menu():
             write_lcd_lines(list_settings)
 
     except KeyboardInterrupt:
+        write_lcd_lines(["Program Quit","python main.py"])
         pass
     finally:
         write_lcd_lines([])
