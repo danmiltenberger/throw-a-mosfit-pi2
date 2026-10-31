@@ -2,6 +2,8 @@ from I2C_write import write_lcd_lines
 from datetime import datetime
 import RPi.GPIO as GPIO #type: ignore
 import time
+from penalty_kick import penalty
+from play_match import one_v_one_match
 
 
 start_match = 26
@@ -75,10 +77,10 @@ def menu():
                 our_team_is_blue = not our_team_is_blue
 
             if button_status[start_kick]:
-                pretend_penalty(match_settings)
+                penalty(match_settings)
 
             if button_status[start_match]:
-                pretend_match(match_settings)
+                one_v_one_match(match_settings)
 
 
             print_to_lcd_match_settings(match_settings)
@@ -100,49 +102,6 @@ def get_status_str(button_status: dict) -> str:
 
     status_str = status_m + "_" + status_p + "_" + status_t + "_" + status_g + "_" + status_x
     return status_str
-
-
-def pretend_match(match_settings):
-
-    time_start = time.perf_counter()
-    while True:
-        button_status = get_button_status()
-        match_settings[BUTTON_STATUS] = get_status_str(button_status)
-        if button_status[end]:
-            return
-
-        time_current = time.perf_counter()
-        time_elapsed = str(round(time_current - time_start,2))
-
-        row1 = f"Match! {time_elapsed}"
-        row2 = f"US: {match_settings[OUR_TEAM_COLOR]}, LEFT: {match_settings[OUR_LEFT_GOAL]}"
-
-
-        row4 = match_settings[BUTTON_STATUS]
-
-        write_lcd_lines([row1,row2,row4])
-
-
-def pretend_penalty(match_settings):
-
-    time_start = time.perf_counter()
-    while True:
-        button_status = get_button_status()
-        match_settings[BUTTON_STATUS] = get_status_str(button_status)
-        if button_status[end]:
-            return
-
-        time_current = time.perf_counter()
-        time_elapsed = str(round(time_current - time_start,2))
-
-        row1 = f"Penalty! {time_elapsed}"
-        row2 = f"US: {match_settings[OUR_TEAM_COLOR]}, LEFT: {match_settings[OUR_LEFT_GOAL]}"
-
-
-        row4 = match_settings[BUTTON_STATUS]
-
-        write_lcd_lines([row1,row2,row4])
-
 
 
 def get_button_status() -> dict:

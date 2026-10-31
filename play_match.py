@@ -1,70 +1,23 @@
-import cv2
-import numpy as np
-from classes import FieldState, BotCommand
-from tam_library import check_button, load_video_as_list_of_frames
-from search_frame import get_fieldstate_from_frame
-from tam_library_draw_field import draw_field_from_field_state, get_field_frame
-from constants import NEW_MATCH
-from constants_points import *
-from constants_rads import *
-import random
-import math
-from bot_decisions import get_bot_command
+import time
+from menu import get_button_status, BUTTON_STATUS, get_status_str, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
+from I2C_write import write_lcd_lines
 
+def match(match_settings: dict):
 
-def play_match(vid_path: str = ""):
-    """play the match either from a live feed or from a pre-recorded video"""
-
-    list_fieldstates = []
-
-
-    frame_index : int = 0
-    if vid_path != "":
-        list_frames = load_video_as_list_of_frames(vid_path)
-        is_load_frame = True
-    else:
-        list_frames = []
-
+    time_start = time.perf_counter()
     while True:
+        button_status = get_button_status()
+        match_settings[BUTTON_STATUS] = get_status_str(button_status)
+        if button_status[end]:
+            return
 
-        # check if match is over
-        if check_button(NEW_MATCH):
-            break   # go back to main loop and wait for next button
+        time_current = time.perf_counter()
+        time_elapsed = str(round(time_current - time_start,2))
 
-        # get the current camera
-        frame = list_frames[frame_index]
-
-        # get the fieldstate from the frame
-        this_fieldstate = get_fieldstate_from_frame(frame)
-
-        # get the past n field_states and determine average positions of objects
-        avg_fieldstate = get_average_fieldstate(this_fieldstate, list_fieldstates)
-
-        bot_command, status = get_bot_command(avg_fieldstate)
-        send_to_arduino(bot_command)
-        
-
-    pass
+        row1 = f"Match! {time_elapsed}"
+        row2 = f"US: {match_settings[OUR_TEAM_COLOR]}, LEFT: {match_settings[OUR_LEFT_GOAL]}"
 
 
+        row4 = match_settings[BUTTON_STATUS]
 
-def get_average_fieldstate(this_fieldstate: FieldState, list_prev : list[FieldState]) -> FieldState:
-
-
-    # with the new fieldstate, consider if individual pieces of data are worth keeping
-
-
-    # blend to get an average position for different objects
-
-    return this_fieldstate
-
-
-def get_frame_from_pi():
-
-    # FIX THIS
-    # TODO
-    return
-
-
-def send_to_arduino(bot_command: BotCommand):
-    pass
+        write_lcd_lines([row1,row2,row4])
