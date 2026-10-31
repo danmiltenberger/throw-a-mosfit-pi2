@@ -6,7 +6,72 @@ from pathlib import Path
 from datetime import datetime
 from variables import DEBUG_PRINT
 
+import cv2
+import numpy as np
 
+
+def add_text_top(
+    frame: np.ndarray,
+    text: str,
+    align: str = "LEFT",
+) -> np.ndarray:
+    """Draw text at the top of a BGR image/frame, aligned left or right."""
+    if frame is None:
+        raise ValueError("frame must not be None")
+    if not text:
+        return frame
+
+    alignment = align.upper()
+    if alignment not in ("LEFT", "RIGHT"):
+        raise ValueError("align must be 'LEFT' or 'RIGHT'")
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.7
+    thickness = 2
+    margin = 10
+    padding = 4
+
+    (text_width, text_height), baseline = cv2.getTextSize(
+        text, font, font_scale, thickness
+    )
+
+    frame_h, frame_w = frame.shape[:2]
+
+    if alignment == "LEFT":
+        x = margin
+    else:  # RIGHT
+        x = max(margin, frame_w - text_width - margin)
+
+    y = max(text_height + margin, margin + text_height)
+
+    # Background rectangle for readability
+    top_left = (max(0, x - padding), max(0, y - text_height - padding))
+    bottom_right = (
+        min(frame_w - 1, x + text_width + padding),
+        min(frame_h - 1, y + baseline + padding),
+    )
+
+    cv2.rectangle(
+        frame,
+        top_left,
+        bottom_right,
+        color=(0, 0, 0),
+        thickness=-1,
+        lineType=cv2.LINE_AA,
+    )
+
+    cv2.putText(
+        frame,
+        text,
+        org=(x, y),
+        fontFace=font,
+        fontScale=font_scale,
+        color=(255, 255, 255),
+        thickness=thickness,
+        lineType=cv2.LINE_AA,
+    )
+
+    return frame
 
 
 
@@ -40,6 +105,65 @@ def show_frame(frame: np.ndarray, window_name : str = "Frame"):
     cv2.imshow(winname= window_name, mat= frame)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+
+def show_frame_in_loop(
+    frame: np.ndarray,
+    window_name: str = "Frame",
+    delay_ms: int = 1,
+    quit_keys: tuple[str, ...] = ("q", "Q"),
+) -> bool:
+    """
+    Display a frame from within a while loop.
+
+    Returns:
+        bool: False if the user requested to quit, otherwise True.
+
+    Quit conditions:
+        - Press Esc
+        - Press any key listed in quit_keys (default: q or Q)
+        - Close the display window
+    """
+    if not isinstance(frame, np.ndarray):
+        raise TypeError(
+            f"frame must be numpy.ndarray, got {type(frame).__name__}"
+        )
+
+    if not isinstance(window_name, str):
+        raise TypeError(
+            f"window_name must be a string, got {type(window_name).__name__}"
+        )
+
+    if not isinstance(delay_ms, int) or delay_ms < 1:
+        raise ValueError(
+            f"delay_ms must be a positive integer, got {delay_ms}"
+        )
+
+    cv2.imshow(winname=window_name, mat=frame)
+
+    key = cv2.waitKey(delay_ms) & 0xFF
+
+    # Esc key
+    if key == 27:
+        cv2.destroyWindow(window_name)
+        return False
+
+    # Configurable quit keys
+    if any(key == ord(quit_key) for quit_key in quit_keys):
+        cv2.destroyWindow(window_name)
+        return False
+
+    # Window was closed with the X button.
+    # This check is best-effort because behavior varies by OS/backend.
+    try:
+        if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
+            cv2.destroyWindow(window_name)
+            return False
+    except cv2.error:
+        cv2.destroyWindow(window_name)
+        return False
+
+    return True
 
 
 def load_image_as_frame(im_path: str) -> np.ndarray:
@@ -115,6 +239,9 @@ def load_video_as_list_of_frames(vid_path: str) -> list[np.ndarray]:
         A failed read after valid frames is treated as end-of-stream;
         this does not guarantee that the source video is uncorrupted.
     """
+
+    print(f"beginning loading video as frames: {vid_path}")
+
     if not isinstance(vid_path, str):
         raise TypeError(
             f"vid_path must be a str, got {type(vid_path).__name__}."

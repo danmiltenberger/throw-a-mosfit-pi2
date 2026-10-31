@@ -374,7 +374,7 @@ def draw_empty_field(
     return frame
 
 
-def get_field_frame() -> np.ndarray:
+def get_field_frame(USE_DRAWN_FIELD : bool = True) -> np.ndarray:
 
     if USE_DRAWN_FIELD:
         frame = load_image_as_frame("field_pngs/field_empty.png")
@@ -510,6 +510,222 @@ def draw_notched_rectangle(
     )
 
     return image
+
+
+def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point, bearing_rad: float, color: tuple[int,int,int]= BLACK) -> np.ndarray:
+
+    pos_px = inches_to_screen(pos_in)
+
+    field_frame = draw_notched_rectangle(
+        image=field_frame,
+        center_x=int(pos_px.x),
+        top_y=int(pos_px.y - convert_to_px(BOT_RADIUS_IN)),
+        width=convert_to_px(BOT_RADIUS_IN) * 2,
+        height=convert_to_px(BOT_RADIUS_IN) * 2,
+        base_length=convert_to_px(BALL_RED_RADIUS_IN) * 2,
+        angle_deg=90,
+        color=color,
+        rotation_deg=math.degrees(bearing_rad) -90,
+        border_thickness=1,
+    )
+
+    return field_frame
+
+
+def draw_top_down_arrows(
+    field_frame: np.ndarray,
+    ref_point_in: Point,
+    target_point_in: Point,
+    ref_bearing_rad: float,
+) -> np.ndarray:
+    """
+    Draw a right-triangle of arrows from a reference point to a target point.
+
+    Field coordinates:
+        - Origin is bottom-left
+        - +x is right
+        - +y is up
+        - Units are inches
+
+    Screen conversion is handled by inches_to_screen().
+
+    Draws:
+        - Red horizontal arrow and distance label
+        - Blue vertical arrow and distance label
+        - Green hypotenuse arrow, distance label, and relative angle label
+    """
+    if not isinstance(field_frame, np.ndarray):
+        raise TypeError(
+            f"field_frame must be numpy.ndarray, got {type(field_frame).__name__}"
+        )
+
+    if field_frame.ndim != 3 or field_frame.shape[2] != 3:
+        raise ValueError(
+            f"field_frame must be a 3-channel BGR image, got shape {field_frame.shape}"
+        )
+
+    if not isinstance(ref_bearing_rad, (int, float)):
+        raise TypeError(
+            f"ref_bearing_rad must be a number, got {type(ref_bearing_rad).__name__}"
+        )
+
+    dx_in = target_point_in.x - ref_point_in.x
+    dy_in = target_point_in.y - ref_point_in.y
+
+    horizontal_distance_in = abs(dx_in)
+    vertical_distance_in = abs(dy_in)
+    hypotenuse_distance_in = math.hypot(dx_in, dy_in)
+
+    # Angle from the reference bearing to the target, in degrees.
+    target_bearing_rad = math.atan2(dy_in, dx_in)
+    relative_angle_rad = target_bearing_rad - ref_bearing_rad
+
+    # Normalize to [-180, 180] degrees
+    relative_angle_deg = math.degrees(relative_angle_rad)
+    relative_angle_deg = (relative_angle_deg + 180.0) % 360.0 - 180.0
+
+    # Convert field-inch coordinates to screen pixel coordinates.
+    ref_px = inches_to_screen(ref_point_in)
+    target_px = inches_to_screen(target_point_in)
+
+    # Corner completing the right triangle.
+    corner_field_point = Point(ref_point_in.x, target_point_in.y)
+    corner_px = inches_to_screen(corner_field_point)
+
+    red = (0, 0, 255)       # BGR
+    blue = (255, 0, 0)      # BGR
+    green = (0, 255, 0)     # BGR
+    white = (255, 255, 255) # BGR
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.55
+    text_thickness = 1
+    line_thickness = 2
+
+    # Horizontal leg: reference -> corner
+    cv2.arrowedLine(
+        img=field_frame,
+        pt1=get_point_int_tuple(ref_px),
+        pt2=get_point_int_tuple(corner_px),
+        color=red,
+        thickness=line_thickness,
+        line_type=cv2.LINE_AA,
+        tipLength=0.08,
+    )
+
+    # Vertical leg: corner -> target
+    cv2.arrowedLine(
+        img=field_frame,
+        pt1=get_point_int_tuple(corner_px),
+        pt2 = get_point_int_tuple(target_px),
+        color=blue,
+        thickness=line_thickness,
+        line_type=cv2.LINE_AA,
+        tipLength=0.08,
+    )
+
+    # Hypotenuse: reference -> target
+    cv2.arrowedLine(
+        img=field_frame,
+        pt1=get_point_int_tuple(ref_px),
+        pt2=get_point_int_tuple(target_px),
+        color=green,
+        thickness=line_thickness,
+        line_type=cv2.LINE_AA,
+        tipLength=0.08,
+    )
+
+    def draw_label(
+        text: str,
+        position: tuple[int, int],
+        color: tuple[int, int, int],
+        offset: tuple[int, int] = (6, -6),
+    ) -> None:
+        x = position[0] + offset[0]
+        y = position[1] + offset[1]
+
+        (text_w, text_h), baseline = cv2.getTextSize(
+            text, font, font_scale, text_thickness
+        )
+
+        # Keep labels inside the frame.
+        frame_h, frame_w = field_frame.shape[:2]
+        x = max(2, min(frame_w - text_w - 2, x))
+        y = max(text_h + 2, min(frame_h - baseline - 2, y))
+
+        cv2.putText(
+            field_frame,
+            text,
+            (x, y),
+            font,
+            font_scale,
+            white,
+            text_thickness,
+            cv2.LINE_AA,
+        )
+
+        # Small colored underline helps associate the label with its arrow.
+        cv2.line(
+            field_frame,
+            (x, y + baseline + 2),
+            (x + text_w, y + baseline + 2),
+            color,
+            max(1, text_thickness),
+            cv2.LINE_AA,
+        )
+
+    # Horizontal distance label, placed near the midpoint of the horizontal leg.
+    horizontal_mid = (
+        int((ref_px.x + corner_px.x) / 2),
+        int((ref_px.y + corner_px.y) / 2),
+    )
+    draw_label(
+        f"{horizontal_distance_in:.1f} in",
+        horizontal_mid,
+        red,
+        offset=(6, -8),
+    )
+
+    # Vertical distance label, placed near the midpoint of the vertical leg.
+    vertical_mid = (
+        int((corner_px.x + target_px.x) / 2),
+        int((corner_px.y + target_px.y) / 2),
+    )
+    draw_label(
+        f"{vertical_distance_in:.1f} in",
+        vertical_mid,
+        blue,
+        offset=(8, 0),
+    )
+
+    # Hypotenuse distance and relative angle label.
+    hypotenuse_mid = (
+        int((ref_px.x + target_px.x) / 2),
+        int((ref_px.y + target_px.y) / 2),
+    )
+    draw_label(
+        f"{hypotenuse_distance_in:.1f} in, {relative_angle_deg:.1f} deg",
+        hypotenuse_mid,
+        green,
+        offset=(8, -10),
+    )
+
+    return field_frame
+
+
+def draw_ball_to_field(field_frame: np.ndarray, ball_pos_in: Point, outline_color : tuple[int,int,int] = BLACK) -> np.ndarray:
+
+    ball_pos_px = inches_to_screen(ball_pos_in)
+    field_frame = draw_outlined_circle(
+            center= ball_pos_px,
+            outline_color= outline_color,
+            fill_color= RED,
+            image= field_frame,
+            outline_thickness= 2,
+            radius= convert_to_px(BALL_RED_RADIUS_IN)
+        )
+
+    return field_frame
 
 
 def draw_field_from_field_state(

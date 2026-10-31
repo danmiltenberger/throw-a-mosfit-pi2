@@ -127,8 +127,8 @@ def concat_frames(
 
 def get_dashboard(
         camera_frame: np.ndarray, 
-        lcd_frame : np.ndarray | None, 
-        field_frame: np.ndarray,) -> np.ndarray:
+        field_frame: np.ndarray,
+        lcd_frame : np.ndarray | None = None, ) -> np.ndarray:
 
 
     if lcd_frame is not None:
@@ -148,6 +148,7 @@ def test_get_dashboard():
     lcd_frame = lcd_simulated(["line 1", "line 2", "line 3", "line 4"])
 
     dashboard_frame = get_dashboard(field_frame= field_frame, camera_frame= camera_frame, lcd_frame= lcd_frame)
+    #dashboard_frame = get_dashboard(field_frame= field_frame, camera_frame= camera_frame)
 
     show_frame(frame= dashboard_frame, window_name= "demo dashboard")
 

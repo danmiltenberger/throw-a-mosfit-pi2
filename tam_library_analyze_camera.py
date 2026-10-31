@@ -18,6 +18,17 @@ from tam_library_front_and_top_down import (
 )
 
 
+def get_hsv_frame(frame: np.ndarray) -> np.ndarray:
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    return hsv
+
+
+def get_mask_frame(hsv_frame: np.ndarray, hsv_lo, hsv_hi) -> np.ndarray:
+    mask = cv2.inRange(hsv_frame, lowerb=hsv_lo, upperb=hsv_hi)
+
+    return mask
+
+
 def get_fieldstate_from_frame(
     frame: np.ndarray,
     timestep: float = 0,
@@ -60,13 +71,282 @@ def get_fieldstate_from_frame(
     return this_frame_field_state
 
 
+def get_contours_from_mask(frame_mask: np.ndarray) -> tuple:
+    """Find external contours in a binary/grayscale mask.
+
+    Returns:
+        tuple: (contours, hierarchy)
+    """
+    if not isinstance(frame_mask, np.ndarray):
+        raise TypeError(
+            f"frame_mask must be numpy.ndarray, got {type(frame_mask).__name__}"
+        )
+
+    if frame_mask.ndim != 2:
+        raise ValueError(
+            f"frame_mask must be a 2D grayscale mask, got shape {frame_mask.shape}"
+        )
+
+    if frame_mask.size == 0:
+        raise ValueError("frame_mask must not be empty")
+
+    contours, hierarchy = cv2.findContours(
+        frame_mask,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE,
+    )
+
+    return contours, hierarchy
+
+
+def draw_contours(
+    frame: np.ndarray,
+    contours,
+    color: tuple[int, int, int] = (0, 0, 0),
+    thickness: int = 5,
+) -> np.ndarray:
+    """Draw all provided contours onto a BGR frame and return the frame."""
+    if not isinstance(frame, np.ndarray):
+        raise TypeError(
+            f"frame must be numpy.ndarray, got {type(frame).__name__}"
+        )
+
+    if frame.ndim != 3 or frame.shape[2] != 3:
+        raise ValueError(
+            f"frame must be a 3-channel BGR image, got shape {frame.shape}"
+        )
+
+    if not isinstance(contours, (list, tuple)):
+        raise TypeError(
+            f"contours must be a list or tuple, got {type(contours).__name__}"
+        )
+
+    if not isinstance(color, tuple) or len(color) != 3:
+        raise TypeError("color must be a tuple of three integers: (B, G, R)")
+
+    if not all(isinstance(value, (int, np.integer)) for value in color):
+        raise TypeError("each color component must be an integer")
+
+    if not isinstance(thickness, (int, np.integer)):
+        raise TypeError(
+            f"thickness must be an integer, got {type(thickness).__name__}"
+        )
+
+    if thickness < 1:
+        raise ValueError(f"thickness must be at least 1, got {thickness}")
+
+    if contours:
+        cv2.drawContours(
+            image=frame,
+            contours=contours,
+            contourIdx=-1,  # Draw all contours
+            color=color,
+            thickness=thickness,
+            lineType=cv2.LINE_AA,
+        )
+
+    return frame
+
+
+def get_object_info_from_contours(
+    contours,
+    analyze_as_circle: bool = True,
+) -> dict:
+    """
+    Analyze contours as circles or squares.
+
+    Returns a dictionary containing object measurements in pixel units:
+        - width: diameter for circles, bounding-box width for squares
+        - area: contour area in pixels
+        - center_x: horizontal center position
+        - center_y: vertical center position
+
+    If multiple contours are supplied, their measurements are combined into
+    one bounding region and total area.
+    """
+
+    #dict_keys
+    WIDTH_PX = "WIDTH_PX"
+    AREA_PX = "AREA_PX"
+    SHAPE = "SHAPE"
+    CENTER_X_PX = "CENTER_X_PX"
+    CENTER_Y_PX = "CENTER_Y_PX"
+
+    if contours is None:
+        raise TypeError("contours must not be None")
+
+    if not isinstance(contours, (list, tuple, np.ndarray)):
+        raise TypeError(
+            f"contours must be a list, tuple, or ndarray, "
+            f"got {type(contours).__name__}"
+        )
+
+    if not isinstance(analyze_as_circle, bool):
+        raise TypeError(
+            f"analyze_as_circle must be a bool, got {type(analyze_as_circle).__name__}"
+        )
+
+    if len(contours) == 0:
+        return {
+            WIDTH_PX: 0.0,
+            AREA_PX: 0.0,
+            CENTER_X_PX: 0.0,
+            CENTER_Y_PX: 0.0,
+            SHAPE : "NO_SHAPE",
+        }
+
+    total_area = 0.0
+    x_min = y_min = np.inf
+    x_max = y_max = -np.inf
+
+    for contour in contours:
+        if not isinstance(contour, np.ndarray):
+            raise TypeError("each contour must be a numpy.ndarray")
+
+        if contour.ndim != 3 or contour.shape[1] != 1 or contour.shape[2] != 2:
+            raise ValueError(
+                "each contour must have shape (N, 1, 2), "
+                f"got {contour.shape}"
+            )
+
+        area = cv2.contourArea(contour)
+        total_area += area
+
+        x, y, w, h = cv2.boundingRect(contour)
+        x_min = min(x_min, x)
+        y_min = min(y_min, y)
+        x_max = max(x_max, x + w)
+        y_max = max(y_max, y + h)
+
+    combined_width = x_max - x_min
+    combined_height = y_max - y_min
+    center_x = x_min + combined_width / 2
+    center_y = y_min + combined_height / 2
+
+    if analyze_as_circle:
+        # Diameter of a circle with the same area as the detected object(s)
+        width = 2.0 * np.sqrt(total_area / np.pi)
+        shape = "CIRCLE"
+    else:
+        # Use the combined bounding box width for a square/rectangular object
+        width = float(combined_width)
+        shape = "SQUARE"
+
+    return {
+        WIDTH_PX: float(width),
+        AREA_PX: float(total_area),
+        CENTER_X_PX: float(center_x),
+        CENTER_Y_PX: float(center_y),
+        SHAPE : shape,
+    }
+
+
+def draw_object_to_frame(
+    frame: np.ndarray,
+    object_dict: dict,
+    color: tuple[int, int, int] = (0, 0, 0),
+    thickness: int = 5,
+) -> np.ndarray:
+    """
+    Draw an object onto a BGR frame as either a circle or square.
+
+    Expected object_dict keys:
+        - width: diameter for a circle, side length for a square
+        - area: object area in pixels
+        - center_x: horizontal center position
+        - center_y: vertical center position
+        - shape: "circle" or "square"
+
+    Returns:
+        np.ndarray: The frame with the object drawn.
+    """
+    if not isinstance(frame, np.ndarray):
+        raise TypeError(
+            f"frame must be numpy.ndarray, got {type(frame).__name__}"
+        )
+
+    if frame.ndim != 3 or frame.shape[2] != 3:
+        raise ValueError(
+            f"frame must be a 3-channel BGR image, got shape {frame.shape}"
+        )
+
+    if not isinstance(object_dict, dict):
+        raise TypeError(
+            f"object_dict must be dict, got {type(object_dict).__name__}"
+        )
+
+    required_keys = {"WIDTH_PX", "AREA_PX", "CENTER_X_PX", "CENTER_Y_PX", "SHAPE"}
+    missing_keys = required_keys - object_dict.keys()
+    if missing_keys:
+        raise KeyError(
+            f"object_dict is missing required keys: {sorted(missing_keys)}"
+        )
+
+    shape = str(object_dict["SHAPE"]).lower()
+    if shape not in ("circle", "square", "no_shape"):
+        raise ValueError(
+            f"shape must be 'circle' or 'square', got {object_dict['SHAPE']!r}"
+        )
+
+    center_x = object_dict["CENTER_X_PX"]
+    center_y = object_dict["CENTER_Y_PX"]
+    width = object_dict["WIDTH_PX"]
+
+    for name, value in (
+        ("CENTER_X_PX", center_x),
+        ("CENTER_Y_PX", center_y),
+        ("WIDTH_PX", width),
+    ):
+        if not isinstance(value, (int, float, np.integer, np.floating)):
+            raise TypeError(f"{name} must be a number, got {type(value).__name__}")
+
+    if width <= 0:
+        return frame
+
+    center = (int(round(center_x)), int(round(center_y)))
+
+    if shape == "circle":
+        radius = int(round(width / 2))
+        cv2.circle(
+            img=frame,
+            center=center,
+            radius=radius,
+            color=color,
+            thickness=thickness,
+            lineType=cv2.LINE_AA,
+        )
+    elif shape == "square":
+        half_side = width / 2
+        top_left = (
+            int(round(center_x - half_side)),
+            int(round(center_y - half_side)),
+        )
+        bottom_right = (
+            int(round(center_x + half_side)),
+            int(round(center_y + half_side)),
+        )
+
+        cv2.rectangle(
+            img=frame,
+            pt1=top_left,
+            pt2=bottom_right,
+            color=color,
+            thickness=thickness,
+            lineType=cv2.LINE_AA,
+        )
+
+    elif shape == "no_shape":
+        pass
+
+    return frame
+
+
 def get_contours(hsv, hsv_hi, hsv_lo) -> Sequence[np.ndarray]:
 
     # create a mask using the hsv values
     #debugprint(f"hsv_hi: {hsv_hi}, hsv_lo: {hsv_lo}")
     mask = cv2.inRange(hsv, lowerb=hsv_lo, upperb=hsv_hi)
 
-    show_frame(mask, "mask")
 
     # get the contours from the mask
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

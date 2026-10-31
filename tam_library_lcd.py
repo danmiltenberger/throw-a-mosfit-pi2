@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from classes import FieldState
 
 
 def lcd_simulated(list_lines: list[str]) -> np.ndarray:
@@ -108,7 +109,32 @@ def lcd_simulated(list_lines: list[str]) -> np.ndarray:
     return frame
 
 
+def lcd_fieldstate(fieldstate: FieldState) -> np.ndarray:
+    '''get the lcd frame with text from a given fieldstate'''
 
+    status_ball = "???"
+    # or X,Y so either way 3 char
+    if fieldstate.ball_is_seen:
+        status_ball = f"{round(fieldstate.ball_pos_in.x)},{round(fieldstate.ball_pos_in.y)}"
+
+    status_opponent ="???"
+    if fieldstate.their_bot_is_seen:
+        status_opponent = f"{round(fieldstate.their_bot_pos_in.x)},{round(fieldstate.their_bot_pos_in.y)}"
+
+    status_us = f"{round(fieldstate.our_bot_pos_in.x)},{round(fieldstate.our_bot_pos_in.y)}"
+    command_us = f"{fieldstate.our_bot_command}"
+
+
+    row1 = f"us {command_us}"
+    row2 = f"bl {status_ball}"
+    row3 = f"op {status_opponent}"
+    row4 = f"cm {command_us}"
+
+
+    list_lines = [row1, row2, row3, row4]
+
+    lcd_frame = lcd_simulated(list_lines= list_lines)
+    return lcd_frame
 
 
 if __name__ == "__main__":
