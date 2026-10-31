@@ -25,13 +25,13 @@ TEAM_BLUE = "BLU"
 HEADER_WAITING = "Change settings or start"
 BUTTON_STATUS = "BUTTON_STATUS"
 
-status_str_init = "no read"
+status_str = "no read"
 
 match_settings = {
     OUR_LEFT_GOAL : GOAL_GREEN,
     OUR_TEAM_COLOR : TEAM_YELLOW,
     HEADER_ROW : HEADER_WAITING,
-    BUTTON_STATUS : status_str_init,
+    BUTTON_STATUS : status_str,
 }
 
 
@@ -61,6 +61,7 @@ def demo_buttons():
             status_x = "X" + str(int(button_status[end]))
 
             status_str = status_m + "_" + status_p + "_" + status_t + "_" + status_g + "_" + status_x
+            match_settings[BUTTON_STATUS] = status_str
 
             if button_status[change_goal]:
 
