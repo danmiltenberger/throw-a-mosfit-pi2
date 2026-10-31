@@ -32,21 +32,21 @@ def get_fieldstate_from_frame(
 
     if search_for_ball_red:
         ball_object = get_detected_object(
-            object_name=BALL_RED, field_state=this_frame_field_state, hsv_frame=hsv
+            object_name=BALL_RED, hsv_frame=hsv
         )
         if ball_object is not None:
             this_frame_field_state.ball_pos_in = ball_object.pos_wrt_bot
 
     if search_for_ball_yellow:
         ball_object = get_detected_object(
-            object_name=BALL_YELLOW, hsv_frame=hsv, field_state=this_frame_field_state
+            object_name=BALL_YELLOW, hsv_frame=hsv, 
         )
         if ball_object is not None:
             pass  # TODO
 
     if search_for_hat_blue:
         hat_object = get_detected_object(
-            field_state= this_frame_field_state, object_name= HAT_BLUE, hsv_frame= hsv
+            object_name= HAT_BLUE, hsv_frame= hsv
         )
         if hat_object is not None:
             pass # TODO
@@ -62,10 +62,10 @@ def get_fieldstate_from_frame(
 def get_contours(hsv, hsv_hi, hsv_lo) -> Sequence[np.ndarray]:
 
     # create a mask using the hsv values
-    debugprint(f"hsv_hi: {hsv_hi}, hsv_lo: {hsv_lo}")
+    #debugprint(f"hsv_hi: {hsv_hi}, hsv_lo: {hsv_lo}")
     mask = cv2.inRange(hsv, lowerb=hsv_lo, upperb=hsv_hi)
 
-    #show_frame(mask, "mask")
+    show_frame(mask, "mask")
 
     # get the contours from the mask
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -222,7 +222,7 @@ def testing_search_frame():
     search_for: str = BALL_YELLOW
 
     obj = get_detected_object(
-        field_state=field_state, hsv_frame=hsv, object_name=search_for
+        hsv_frame=hsv, object_name=search_for
     )
     if obj is None:
         return
