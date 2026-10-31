@@ -3,18 +3,11 @@ import cv2
 from picamera2 import Picamera2 #type: ignore
 from constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
 
-# Create once at program startup
-picam2 = Picamera2()
-
-# RGB888 gives an OpenCV-compatible 3-channel image
-config = picam2.create_video_configuration(
-    main={"format": "RGB888", "size": (CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y)}
-)
-picam2.configure(config)
-picam2.start()
 
 
-def get_frame() -> np.ndarray:
+
+
+def get_frame(picam2) -> np.ndarray:
     """
     Capture one frame from the Raspberry Pi camera.
 
@@ -27,14 +20,26 @@ def get_frame() -> np.ndarray:
         raise RuntimeError("Failed to capture frame from Picamera2.")
 
     # OpenCV generally expects BGR order
-    return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    #return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+    return frame
 
 
 # Example usage
 if __name__ == "__main__":
+
+    # Create once at program startup
+    picam2 = Picamera2()
+
+    # RGB888 gives an OpenCV-compatible 3-channel image
+    config = picam2.create_video_configuration(
+        main={"format": "RGB888", "size": (CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y)}
+    )
+    picam2.configure(config)
+    picam2.start()
     try:
         while True:
-            frame = get_frame()
+            frame = get_frame(picam2)
 
             # Your OpenCV processing here
             cv2.imshow("Raspberry Pi Camera", frame)

@@ -1,9 +1,11 @@
 from I2C_write import write_lcd_lines
 from datetime import datetime
 import RPi.GPIO as GPIO  # type: ignore
+from picamera2 import Picamera2 #type: ignore
 import time
 from penalty_kick import penalty
 from play_match import one_v_one_match
+from constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
 from menu_constants import (
     start_match,
     start_kick,
@@ -35,6 +37,17 @@ def menu():
     GPIO.setup(change_goal, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(end, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+
+    # Create once at program startup
+    picam2 = Picamera2()
+
+    # RGB888 gives an OpenCV-compatible 3-channel image
+    config = picam2.create_video_configuration(
+        main={"format": "RGB888", "size": (CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y)}
+    )
+    picam2.configure(config)
+    picam2.start()
+
     our_left_is_purple = False
     our_team_is_blue = False
 
@@ -65,10 +78,10 @@ def menu():
                 our_team_is_blue = not our_team_is_blue
 
             if button_status[start_kick]:
-                penalty(match_settings)
+                penalty(match_settings, picam2)
 
             if button_status[start_match]:
-                one_v_one_match(match_settings)
+                one_v_one_match(match_settings, picam2)
 
             print_to_lcd_match_settings(match_settings)
 

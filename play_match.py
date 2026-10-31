@@ -6,8 +6,11 @@ from tam_library_analyze_camera import get_detected_object
 import cv2
 from constants import BALL_RED
 from bot_vision import get_frame
+from picamera2 import Picamera2 #type: ignore
+from constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
 
-def one_v_one_match(match_settings: dict):
+
+def one_v_one_match(match_settings: dict, picam2):
 
 
     ball_status = "???"
@@ -25,7 +28,7 @@ def one_v_one_match(match_settings: dict):
             return
 
         # get each frame
-        frame = get_frame()
+        frame = get_frame(picam2)
         frame_og = frame.copy()
 
         # Convert BGR to HSV
@@ -59,6 +62,13 @@ def one_v_one_match(match_settings: dict):
 
 
 if __name__ == "__main__":
+    picam2 = Picamera2()
+    config = picam2.create_video_configuration(
+        main={"format": "RGB888", "size": (CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y)}
+    )
+    picam2.configure(config)
+    picam2.start()
+
 
     # use default match settings
-    one_v_one_match(match_settings)
+    one_v_one_match(match_settings, picam2)
