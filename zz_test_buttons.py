@@ -23,6 +23,7 @@ def demo_buttons():
         while True:
 
             time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            button_status = ""
 
 
             if GPIO.input(start_match) == GPIO.LOW:
@@ -47,7 +48,7 @@ def demo_buttons():
                 button_status = "back to menu"
 
             write_lcd_lines([
-                "waiting for buttons",
+                f"waiting for buttons, {time_str}",
                 button_status,
 
             ])
