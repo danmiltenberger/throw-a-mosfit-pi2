@@ -216,8 +216,8 @@ def main():
     #output_txt = hsv_dir + "/hat_yellow.txt"
     #output_txt = hsv_dir + "/hat_cyan.txt"
 
-    obj_name = BALL_YELLOW
-    given_png = "training_data/tennis_ball_48in.png"
+    obj_name = BALL_RED
+    given_png = "training_data/red_ball_centerframe.png"
 
     output_txt_file = hsv_dir + "/" + obj_name + ".txt"
 
