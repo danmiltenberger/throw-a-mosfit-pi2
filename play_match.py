@@ -5,6 +5,7 @@ from I2C_write import write_lcd_lines
 from tam_library_analyze_camera import get_detected_object
 import cv2
 from constants import BALL_RED
+from bot_vision import get_frame
 
 def one_v_one_match(match_settings: dict):
 
@@ -13,14 +14,6 @@ def one_v_one_match(match_settings: dict):
     hat_y_status = "???"
     hat_b_status = "???"
     bot_command = BotCommand()
-
-
-    cap = cv2.VideoCapture(0)
- 
-
-
- 
-
 
     time_start = time.perf_counter()
     while True:
@@ -32,9 +25,8 @@ def one_v_one_match(match_settings: dict):
             return
 
         # get each frame
-        _, frame = cap.read()
-
-        cv2.imshow("camera", frame)
+        frame = get_frame()
+        frame_og = frame.copy()
 
         # Convert BGR to HSV
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -58,4 +50,9 @@ def one_v_one_match(match_settings: dict):
         row3 = f"com: {bot_command}"
         row4 = match_settings[BUTTON_STATUS]
         write_lcd_lines([row1,row2, row3, row4])
+
+        # show the camera to the user
+        cv2.imshow("camera", frame_og)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            return
 
