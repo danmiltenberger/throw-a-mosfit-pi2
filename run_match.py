@@ -4,7 +4,7 @@ from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
 import time
 import cv2
 from tam_buttons import *
-from tam_frame import get_field_frame
+from tam_frame import get_field_frame, show_frame_in_loop
 from tam_classes import BotCommand
 from tam_vision import get_frame
 from tam_frame import save_frame_as_png
@@ -51,7 +51,8 @@ def one_v_one_match(match_settings: dict, picam2):
         write_lcd_lines([row1,row2, row3, row4])
 
         # show the camera to the user
-        cv2.imshow("Vision Stack", frame_vision_stack)
+        if not show_frame_in_loop(frame_vision_stack):
+            break
 
 
 
