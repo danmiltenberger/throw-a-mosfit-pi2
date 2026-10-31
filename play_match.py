@@ -1,6 +1,6 @@
 import time
 from classes import BotCommand, DetectedObject
-from menu_constants import get_button_status, BUTTON_STATUS, get_status_str, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
+from menu_constants import get_button_status, BUTTON_STATUS, get_status_str, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR, match_settings
 from I2C_write import write_lcd_lines
 from tam_library_analyze_camera import get_detected_object
 import cv2
@@ -54,5 +54,11 @@ def one_v_one_match(match_settings: dict):
         # show the camera to the user
         cv2.imshow("camera", frame_og)
         if cv2.waitKey(1) & 0xFF == ord("q"):
-            return
+            break
 
+
+
+if __name__ == "__main__":
+
+    # use default match settings
+    one_v_one_match(match_settings)
