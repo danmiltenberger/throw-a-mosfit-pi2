@@ -14,12 +14,12 @@ PHOTO_KEY = ord("s")
 QUIT_KEY = ord("q")
 
 
-def create_camera(width=CAMERA_CAPTURE_X, height=CAMERA_CAPTURE_Y, fps=CAMERA_CAPTURE_FPS):
+def create_camera():
     """Create and start a Picamera2 camera configured for OpenCV BGR frames."""
     picam2 = Picamera2()
     config = picam2.create_video_configuration(
-        main={"size": (width, height), "format": "BGR888"},
-        controls={"FrameRate": fps},
+        main={"size": (CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y), "format": "RGB888"},
+        controls={"FrameRate": CAMERA_CAPTURE_FPS},
     )
     picam2.configure(config)
     picam2.start()
@@ -30,8 +30,12 @@ def get_frame(picam2):
     """Return the current camera frame as a clean 3-channel BGR NumPy array."""
     frame = picam2.capture_array("main")
 
-    # if frame.ndim == 3 and frame.shape[2] == 4:
-    #     frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+    if frame.ndim == 3 and frame.shape[2] == 4:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+    else:
+        # Picamera2's RGB888/BGR888 naming is counterintuitive:
+        # the captured NumPy array is RGB, while OpenCV uses BGR.
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
     return frame
 
