@@ -26,7 +26,7 @@ def create_camera():
     return picam2
 
 
-SWAP_CHANNELS = None  # Set automatically on first photo
+SWAP_CHANNELS = True
 
 
 def get_frame(picam2):
