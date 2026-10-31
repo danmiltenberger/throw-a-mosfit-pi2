@@ -4,6 +4,49 @@ import cv2
 import numpy as np
 
 
+import cv2
+import numpy as np
+from picamera2 import Picamera2
+
+
+def get_frame(picam2: Picamera2, stream_name: str = "main") -> np.ndarray:
+    """
+    Get the current frame from a configured, started Picamera2 camera.
+
+    Args:
+        picam2: An initialized and started Picamera2 instance.
+        stream_name: Name of the configured capture stream, usually "main".
+
+    Returns:
+        np.ndarray: Current frame in OpenCV BGR format, shape (height, width, 3).
+    """
+    if not isinstance(picam2, Picamera2):
+        raise TypeError(
+            f"picam2 must be a Picamera2 instance, got {type(picam2).__name__}"
+        )
+
+    if not isinstance(stream_name, str) or not stream_name:
+        raise ValueError("stream_name must be a non-empty string")
+
+    # Picamera2 returns an RGB888 array by default for RGB streams.
+    frame_rgb = picam2.capture_array(stream_name)
+
+    if not isinstance(frame_rgb, np.ndarray):
+        raise TypeError(
+            f"Expected Picamera2 to return numpy.ndarray, got {type(frame_rgb).__name__}"
+        )
+
+    if frame_rgb.ndim != 3 or frame_rgb.shape[2] != 3:
+        raise ValueError(
+            f"Expected an RGB image with shape (H, W, 3), got {frame_rgb.shape}"
+        )
+
+    # Convert RGB (Picamera2) to BGR (OpenCV).
+    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+
+    return frame_bgr
+
+
 def get_hsv_frame(frame: np.ndarray) -> np.ndarray:
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     return hsv

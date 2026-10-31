@@ -2,10 +2,14 @@ from picamera2 import Picamera2 #type: ignore
 from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
 
 import time
-from tam_menu import match_settings
+import cv2
+from tam_buttons import *
 from tam_frame import get_field_frame
 from tam_classes import BotCommand
-
+from tam_vision import get_frame
+from tam_frame import save_frame_as_png
+from example_stack import vision_full_stack
+from tam_lcd import write_lcd_lines
 
 def one_v_one_match(match_settings: dict, picam2):
 
@@ -28,7 +32,7 @@ def one_v_one_match(match_settings: dict, picam2):
 
         # check if the program should quit
         button_status = get_button_status()
-        match_settings[BUTTON_STATUS] = get_status_str(button_status)
+        match_settings[BUTTON_STATUS] = get_button_status_str(button_status)
         if button_status[end]:
 
             if save_frame_on_exit:
@@ -47,8 +51,7 @@ def one_v_one_match(match_settings: dict, picam2):
         write_lcd_lines([row1,row2, row3, row4])
 
         # show the camera to the user
-        if not show_frame_in_loop(frame_vision_stack, window_name="Frame", delay_ms=1):
-            break
+        cv2.imshow("Vision Stack", frame_vision_stack)
 
 
 

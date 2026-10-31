@@ -1,5 +1,5 @@
 import time
-from tam_menu import BUTTON_STATUS, get_status_str, get_button_status, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
+from tam_buttons import BUTTON_STATUS, get_button_status_str, get_button_status, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
 from tam_lcd import write_lcd_lines
 
 def penalty(match_settings, picam):
@@ -7,7 +7,7 @@ def penalty(match_settings, picam):
     time_start = time.perf_counter()
     while True:
         button_status = get_button_status()
-        match_settings[BUTTON_STATUS] = get_status_str(button_status)
+        match_settings[BUTTON_STATUS] = get_button_status_str(button_status)
         if button_status[end]:
             return
 
