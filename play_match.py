@@ -40,7 +40,7 @@ def one_v_one_match(match_settings: dict, picam2):
                 save_frame_as_png(frame_og)
             return
 
-        frame_vision_stack = vision_full_stack(frame.copy(), frame_field=field_frame)
+        frame_vision_stack = vision_full_stack(frame.copy(), frame_field=field_frame.copy())
 
         # print information to the LCD
         time_current = time.perf_counter()
