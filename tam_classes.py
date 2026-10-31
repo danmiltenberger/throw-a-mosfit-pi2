@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from constants import TIMESTEP, OUR_BOT_BEARING, OUR_BOT_POS_IN_X, OUR_BOT_POS_IN_Y, THEIR_BOT_BEARING, THEIR_BOT_POS_IN_X, THEIR_BOT_POS_IN_Y
-from constants_rads import *
+from tam_constants import *
 import math
 
 

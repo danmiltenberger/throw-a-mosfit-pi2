@@ -1,7 +1,6 @@
-from classes import Point
-from constants import SCREEN_CENTER_X
+from tam_constants import SCREEN_CENTER_X
+from tam_classes import Point
 import math
-
 
 FOCAL_LENGTH = 1253.333     # recalc this when able
 

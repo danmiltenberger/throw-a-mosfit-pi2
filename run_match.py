@@ -1,15 +1,10 @@
-import time
-from classes import BotCommand, DetectedObject
-from menu_constants import get_button_status, BUTTON_STATUS, get_status_str, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR, match_settings
-from I2C_write import write_lcd_lines
-from tam_library_analyze_camera import get_detected_object
-from tam_library_draw_field import get_field_frame
-from tam_library import save_frame_as_png, show_frame_in_loop
-import cv2
-from constants import BALL_RED
-from bot_vision import get_frame, vision_full_stack
 from picamera2 import Picamera2 #type: ignore
-from constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
+from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
+
+import time
+from tam_menu import match_settings
+from tam_frame import get_field_frame
+from tam_classes import BotCommand
 
 
 def one_v_one_match(match_settings: dict, picam2):

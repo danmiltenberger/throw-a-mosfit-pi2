@@ -1,12 +1,11 @@
-from I2C_write import write_lcd_lines
-from datetime import datetime
 import RPi.GPIO as GPIO  # type: ignore
 from picamera2 import Picamera2 #type: ignore
-import time
-from penalty_kick import penalty
-from play_match import one_v_one_match
-from constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
-from menu_constants import (
+
+from run_penalty_kick import penalty
+from run_match import one_v_one_match
+from tam_lcd import write_lcd_lines
+from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
+from tam_buttons import (
     start_match,
     start_kick,
     status_str,
@@ -23,9 +22,9 @@ from menu_constants import (
     TEAM_YELLOW,
     HEADER_ROW,
     HEADER_WAITING,
-    get_status_str,
+    get_button_status_str,
     get_button_status,
-    print_to_lcd_match_settings
+    get_lcd_rows_match_settings
 )
 
 
@@ -55,7 +54,7 @@ def menu():
         while True:
             button_status = get_button_status()
 
-            match_settings[BUTTON_STATUS] = get_status_str(button_status)
+            match_settings[BUTTON_STATUS] = get_button_status_str(button_status)
 
             if button_status[change_goal]:
 
@@ -83,7 +82,8 @@ def menu():
             if button_status[start_match]:
                 one_v_one_match(match_settings, picam2)
 
-            print_to_lcd_match_settings(match_settings)
+            list_settings = get_lcd_rows_match_settings(match_settings)
+            write_lcd_lines(list_settings)
 
     except KeyboardInterrupt:
         pass

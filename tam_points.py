@@ -1,4 +1,4 @@
-from classes import Point, Line
+from tam_classes import Point, Line
 
 
 ### Defining the field, everything in inches

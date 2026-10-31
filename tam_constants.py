@@ -1,5 +1,7 @@
-from dataclasses import dataclass
 import numpy as np
+from tam_colors import *
+
+
 
 # Camera Constants
 CAMERA_CAPTURE_X = 640
@@ -69,77 +71,6 @@ FUCHSIA_SIDE = "FUCHSIA"
 GREEN_SIDE = "GREEN"
 
 
-
-
-
-# visualization
-PIXELS_PER_INCH : int = 5
-
-@dataclass 
-# default match settings
-class MatchSettings:
-
-    # Game states
-    WAITING_FOR_START: bool = True
-
-    # Game vars
-    OUR_TEAM_COLOR: str = YELLOW_TEAM
-    THEIR_TEAM_COLOR: str = BLUE_TEAM
-    GOAL_EAST_COLOR: str = FUCHSIA_SIDE
-    GOAL_WEST_COLOR: str = GREEN_SIDE
-
-
-
-
-
-### colors
-# OpenCV colors: (Blue, Green, Red)
-
-
-# Black, white, and grays
-BLACK       = (0, 0, 0)
-WHITE       = (255, 255, 255)
-GRAY        = (128, 128, 128)
-LIGHT_GRAY  = (192, 192, 192)
-DARK_GRAY   = (64, 64, 64)
-
-
-# Goalpost specific colors
-FUCHSIA = (255, 0, 255)  # OpenCV BGR: blue, green, red
-
-# Primary and secondary colors
-RED         = (0, 0, 255)
-GREEN       = (0, 255, 0)
-BLUE        = (255, 0, 0)
-YELLOW      = (0, 255, 255)
-CYAN        = (255, 255, 0)
-MAGENTA     = (255, 0, 255)
-
-# Additional colors
-ORANGE      = (0, 165, 255)
-PURPLE      = (128, 0, 128)
-PINK        = (203, 192, 255)
-BROWN       = (42, 42, 165)
-GOLD        = (0, 215, 255)
-NAVY        = (128, 0, 0)
-TEAL        = (128, 128, 0)
-OLIVE       = (0, 128, 128)
-MAROON      = (0, 0, 128)
-
-# Light colors
-LIGHT_BLUE  = (230, 216, 173)
-LIGHT_GREEN = (144, 238, 144)
-LIGHT_PINK  = (193, 182, 255)
-
-# Dark colors
-DARK_RED    = (0, 0, 139)
-DARK_GREEN  = (0, 100, 0)
-DARK_BLUE   = (139, 0, 0)
-
-
-
-#### quick look up
-
 search_dict = {
     BALL_RED: {
         DRAW_COLOR: RED,
@@ -184,4 +115,18 @@ search_dict = {
         ANALYSIS_SHAPE : RECT,
     },
 }
+
+
+# direction constants
+# measured ccw+ from 3oclock position
+BEARING_EAST : float = 0
+BEARING_NORTH : float = np.pi/2
+BEARING_WEST : float = np.pi
+BEARING_SOUTH : float = -np.pi/2
+
+BEARING_NORTH_EAST : float = np.pi/4
+BEARING_NORTH_WEST : float = np.pi/2 + np.pi /4
+BEARING_SOUTH_EAST : float = - np.pi/4
+BEARING_SOUTH_WEST : float = -np.pi/2 - np.pi/4 
+
 

@@ -1,11 +1,10 @@
+from tam_classes import BotCommand
 import time
 import serial
-from I2C_write import write_lcd_lines
-from classes import BotCommand
+from tam_lcd import write_lcd_lines
+
 
 # to get the port run >python3 -m serial.tools.list_ports -v
-
-
 def send_to_arduino(connection, message):
     """Send one line and return the Arduino's response."""
     connection.write((message + "\n").encode("utf-8"))

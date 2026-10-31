@@ -1,6 +1,7 @@
-from pi_arduino import send_to_arduino
-from classes import BotCommand
-from variables_robot import *
+from tam_arduino import send_command_to_arduino
+from tam_classes import BotCommand
+from tam_commands import *
+
 
 def system_check():
     '''Go through all our systems and make sure things are working'''
