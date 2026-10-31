@@ -4,11 +4,11 @@ import RPi.GPIO as GPIO #type: ignore
 import time
 
 
-start_match = 5
-start_kick = 6
+start_match = 26
+start_kick = 19
 change_team = 13
-change_goal = 19
-end = 26
+change_goal = 6
+end = 5
 
 
 def demo_buttons():
@@ -28,6 +28,7 @@ def demo_buttons():
     except KeyboardInterrupt:
         pass
     finally:
+        write_lcd_lines([])
         GPIO.cleanup()
 
 
