@@ -17,6 +17,7 @@ from tam_library_front_and_top_down import (
     calc_angle_from_screen_center,
 )
 
+
 def get_fieldstate_from_frame(
     frame: np.ndarray,
     timestep: float = 0,
