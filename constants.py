@@ -143,8 +143,8 @@ DARK_BLUE   = (139, 0, 0)
 search_dict = {
     BALL_RED: {
         DRAW_COLOR: RED,
-        HSV_LO: np.array([169, 213, 67], dtype=np.uint8),
-        HSV_HI: np.array([179, 255, 147], dtype=np.uint8),
+        HSV_HI: np.array([179, 255, 226]),
+        HSV_LO: np.array([165, 147, 14]),
         KNOWN_WIDTH: BALL_RED_DIAM_IN,
         ANALYSIS_SHAPE : CIRC,
     },
