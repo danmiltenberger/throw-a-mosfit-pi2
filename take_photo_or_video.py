@@ -3,7 +3,7 @@ from datetime import datetime
 from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y, CAMERA_CAPTURE_FPS
 
 import cv2
-from picamera2 import Picamera2
+from picamera2 import Picamera2 #type: ignore
 
 
 
@@ -30,8 +30,8 @@ def get_frame(picam2):
     """Return the current camera frame as a clean 3-channel BGR NumPy array."""
     frame = picam2.capture_array("main")
 
-    if frame.ndim == 3 and frame.shape[2] == 4:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+    # if frame.ndim == 3 and frame.shape[2] == 4:
+    #     frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
 
     return frame
 
@@ -125,8 +125,7 @@ def draw_overlay(frame, recording, recording_started_at):
 
 def run_camera():
     """Main camera loop: preview, record, photograph, and quit."""
-    fps = 30
-    picam2 = create_camera(fps=fps)
+    picam2 = create_camera()
 
     writer = None
     output_filename = None
@@ -147,7 +146,7 @@ def run_camera():
 
             elif key == RECORD_KEY:
                 if writer is None:
-                    writer, output_filename = start_recording(frame, fps)
+                    writer, output_filename = start_recording(frame, CAMERA_CAPTURE_FPS)
                     recording_started_at = cv2.getTickCount() / cv2.getTickFrequency()
                 else:
                     stop_recording(writer, output_filename)
