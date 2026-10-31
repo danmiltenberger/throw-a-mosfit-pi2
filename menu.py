@@ -37,7 +37,7 @@ match_settings = {
 
 
 
-def demo_buttons():
+def menu():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(start_match, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(start_kick, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -89,6 +89,7 @@ def demo_buttons():
     finally:
         write_lcd_lines([])
         GPIO.cleanup()
+
 
 def get_status_str(button_status: dict) -> str:
     status_m = "M" + str(int(button_status[start_match]))
@@ -196,4 +197,4 @@ def print_to_lcd_match_settings(match_settings: dict):
 
 
 if __name__ == "__main__":
-    demo_buttons()
+    menu()
