@@ -47,21 +47,12 @@ def demo_buttons():
 
     our_left_is_purple = False
     our_team_is_blue = False
-    is_in_penalty_kick = False
-    is_in_match = False
 
     try:
         while True:
             button_status = get_button_status()
 
-            status_m = "M" + str(int(button_status[start_match]))
-            status_p = "P" + str(int(button_status[start_kick]))
-            status_t = "T" + str(int(button_status[change_team])) 
-            status_g = "G" + str(int(button_status[change_goal]))
-            status_x = "X" + str(int(button_status[end]))
-
-            status_str = status_m + "_" + status_p + "_" + status_t + "_" + status_g + "_" + status_x
-            match_settings[BUTTON_STATUS] = status_str
+            match_settings[BUTTON_STATUS] = get_status_str(button_status)
 
             if button_status[change_goal]:
 
@@ -84,22 +75,10 @@ def demo_buttons():
                 our_team_is_blue = not our_team_is_blue
 
             if button_status[start_kick]:
-                is_in_penalty_kick = True
+                pretend_penalty(match_settings)
 
             if button_status[start_match]:
-                is_in_match = True
-
-
-            if is_in_match or is_in_penalty_kick:
-                if button_status[end]:
-                    is_in_match = False
-                    is_in_penalty_kick = False
-
-            if is_in_match:
-                match_settings[HEADER_ROW] = "MATCH"
-
-            if is_in_penalty_kick:
-                match_settings[HEADER_ROW] = "PENALTY"
+                pretend_match(match_settings)
 
 
             print_to_lcd_match_settings(match_settings)
@@ -110,6 +89,58 @@ def demo_buttons():
     finally:
         write_lcd_lines([])
         GPIO.cleanup()
+
+def get_status_str(button_status: dict) -> str:
+    status_m = "M" + str(int(button_status[start_match]))
+    status_p = "P" + str(int(button_status[start_kick]))
+    status_t = "T" + str(int(button_status[change_team])) 
+    status_g = "G" + str(int(button_status[change_goal]))
+    status_x = "X" + str(int(button_status[end]))
+
+    status_str = status_m + "_" + status_p + "_" + status_t + "_" + status_g + "_" + status_x
+    return status_str
+
+
+def pretend_match(match_settings):
+
+    time_start = time.perf_counter()
+    while True:
+        button_status = get_button_status()
+        match_settings[BUTTON_STATUS] = get_status_str(button_status)
+        if button_status[end]:
+            return
+
+        time_current = time.perf_counter()
+        time_elapsed = str(round(time_current - time_start,2))
+
+        row1 = f"Match! {time_elapsed}"
+        row2 = f"US: {match_settings[OUR_TEAM_COLOR]}, LEFT: {match_settings[OUR_LEFT_GOAL]}"
+
+
+        row4 = match_settings[BUTTON_STATUS]
+
+        write_lcd_lines([row1,row2,row4])
+
+
+def pretend_penalty(match_settings):
+
+    time_start = time.perf_counter()
+    while True:
+        button_status = get_button_status()
+        match_settings[BUTTON_STATUS] = get_status_str(button_status)
+        if button_status[end]:
+            return
+
+        time_current = time.perf_counter()
+        time_elapsed = str(round(time_current - time_start,2))
+
+        row1 = f"Penalty! {time_elapsed}"
+        row2 = f"US: {match_settings[OUR_TEAM_COLOR]}, LEFT: {match_settings[OUR_LEFT_GOAL]}"
+
+
+        row4 = match_settings[BUTTON_STATUS]
+
+        write_lcd_lines([row1,row2,row4])
 
 
 
