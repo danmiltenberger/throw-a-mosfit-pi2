@@ -1,5 +1,5 @@
 import time
-from menu import BUTTON_STATUS, get_status_str, get_button_status, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
+from menu_constants import BUTTON_STATUS, get_status_str, get_button_status, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
 from I2C_write import write_lcd_lines
 
 def penalty(match_settings):

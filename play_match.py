@@ -1,5 +1,5 @@
 import time
-from menu import get_button_status, BUTTON_STATUS, get_status_str, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
+from menu_constants import get_button_status, BUTTON_STATUS, get_status_str, end, OUR_LEFT_GOAL, OUR_TEAM_COLOR
 from I2C_write import write_lcd_lines
 
 def one_v_one_match(match_settings: dict):
