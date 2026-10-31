@@ -10,6 +10,7 @@ from tam_vision import get_frame
 from tam_frame import save_frame_as_png
 from example_stack import vision_full_stack
 from tam_lcd import write_lcd_lines
+from tam_hsv import load_search_dict_from_csv
 
 def one_v_one_match(match_settings: dict, picam2):
 
@@ -17,6 +18,8 @@ def one_v_one_match(match_settings: dict, picam2):
 
 
     field_frame = get_field_frame(USE_DRAWN_FIELD=False)
+
+    search_dict = load_search_dict_from_csv()
 
     ball_status = "???"
     hat_y_status = "???"
@@ -39,7 +42,7 @@ def one_v_one_match(match_settings: dict, picam2):
                 save_frame_as_png(frame_og)
             return
 
-        frame_vision_stack = vision_full_stack(frame.copy(), frame_field=field_frame.copy())
+        frame_vision_stack = vision_full_stack(frame.copy(), frame_field=field_frame.copy(), search_dict=search_dict)
 
         # print information to the LCD
         time_current = time.perf_counter()

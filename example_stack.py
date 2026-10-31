@@ -10,6 +10,7 @@ from tam_constants import *
 from tam_draw import add_text_top, draw_robot_to_field, draw_ball_to_field, draw_top_down_arrows
 from tam_vision import get_hsv_frame, get_mask_frame, get_contours, get_object_info_from_contours
 from tam_topdown import calc_distance_from_bot, calc_angle_from_screen_center, convert_to_field
+from tam_hsv import load_search_dict_from_csv
 
 
 
@@ -130,7 +131,7 @@ def get_frame(picam2) -> np.ndarray:
 
 
 
-def vision_full_stack(frame_camera : np.ndarray, frame_field: np.ndarray) -> np.ndarray:
+def vision_full_stack(frame_camera : np.ndarray, frame_field: np.ndarray, search_dict : dict) -> np.ndarray:
     robot_pos = FIELD_GOALBOX_CENTER_BOTTOM
     robot_rad = BEARING_NORTH
     robot_color = YELLOW
@@ -206,7 +207,10 @@ if __name__ == "__main__":
 
     frame_camera = load_image_as_frame("training_data/red_ball_centerframe.png")
     frame_field = get_field_frame(USE_DRAWN_FIELD= False)
-    frame_full = vision_full_stack(frame_field= frame_field, frame_camera=frame_camera)
+
+    search_dict = load_search_dict_from_csv()
+
+    frame_full = vision_full_stack(frame_field= frame_field, frame_camera=frame_camera, search_dict= search_dict)
 
     #show_frame(frame_full)
 
@@ -215,7 +219,7 @@ if __name__ == "__main__":
 
 
     for frame_camera in list_frames_camera:
-        frame_full = vision_full_stack(frame_field= frame_field.copy(), frame_camera=frame_camera)
+        frame_full = vision_full_stack(frame_field= frame_field.copy(), frame_camera=frame_camera, search_dict=search_dict)
 
         cv2.imshow("Vision Stack", frame_full)
 

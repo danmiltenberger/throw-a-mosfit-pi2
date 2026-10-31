@@ -1,10 +1,73 @@
 import cv2
 from pathlib import Path
 import numpy as np
-from constants import *
+from tam_constants import *
 
 photos_and_vids_dir = TRAINING_DATA
 hsv_dir = HSV_BOUNDS
+
+import csv
+import numpy as np
+
+
+def save_search_dict_to_csv(search_dict, filename):
+    """Save a nested search dictionary to a CSV file."""
+    fieldnames = [
+        "search_name",
+        "DRAW_COLOR",
+        "HSV_LO",
+        "HSV_HI",
+        "KNOWN_WIDTH",
+        "ANALYSIS_SHAPE",
+    ]
+
+    with open(filename, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for search_name, params in search_dict.items():
+            row = {"search_name": search_name}
+
+            for key, value in params.items():
+                if isinstance(value, np.ndarray):
+                    # Store arrays as comma-separated values: "169,213,67"
+                    value = ",".join(str(int(x)) for x in value.tolist())
+
+                row[key] = value
+
+            writer.writerow(row)
+
+
+def load_search_dict_from_csv(filename : str = HSV_CSV_PATH):
+    """Load a CSV file back into the original nested dictionary format."""
+    search_dict = {}
+
+    with open(filename, newline="") as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            search_name = row.pop("search_name")
+            params = {}
+
+            for key, value in row.items():
+                if key in ("HSV_LO", "HSV_HI"):
+                    if value and value != "to_be_determined":
+                        params[key] = np.array(
+                            [int(x) for x in value.split(",")],
+                            dtype=np.uint8,
+                        )
+                    else:
+                        params[key] = value
+                elif key == "KNOWN_WIDTH":
+                    params[key] = float(value)
+                else:
+                    params[key] = value
+
+            search_dict[search_name] = params
+
+
+    print(f"loaded search_dict from {filename}")
+    return search_dict
 
 
 
@@ -191,38 +254,41 @@ def tune_hsv_range(image_path, output_txt="hsv_range.txt"):
     lower = lower.astype(np.uint8)
     upper = upper.astype(np.uint8)
 
-    with open(output_txt, "w") as f:
-        f.write(f"lower_hsv = {lower.tolist()}\n")
-        f.write(f"upper_hsv = {upper.tolist()}\n")
 
 
-    # format
-    # HSV_HI: np.array([0, 200, 0], dtype=np.uint8),
-    # HSV_LO: np.array([10, 255, 157], dtype=np.uint8)
-
-    print(f"\nAccepted HSV range saved to: {output_txt}")
+    print(f"\nAccepted HSV range returned")
     print(f"HSV_HI: np.array({upper.tolist()})")
     print(f"HSV_LO: np.array({lower.tolist()})")
 
     cv2.destroyAllWindows()
 
-    return lower, upper, output_txt
+    return_dict = {
+        HSV_LO : lower,
+        HSV_HI : upper
+    }
+
+    return return_dict
 
 
 def main():
-    #frame = get_or_load_frame()
-
-    #output_txt = hsv_dir + "/ball_red.txt"
-    #output_txt = hsv_dir + "/hat_yellow.txt"
-    #output_txt = hsv_dir + "/hat_cyan.txt"
-
-    obj_name = BALL_RED
-    given_png = "training_data/red_ball_centerframe.png"
-
-    output_txt_file = hsv_dir + "/" + obj_name + ".txt"
 
 
-    tune_hsv_range(given_png, output_txt_file)
+    search_dict = load_search_dict_from_csv("hsv_bounds/initial.csv")
+
+    object_name = BALL_RED
+    image_path = "training_data/red_ball_centerframe.png"
+
+    hsv_dict = tune_hsv_range(image_path=image_path)
+
+    search_dict[object_name][HSV_HI] = hsv_dict[HSV_HI]
+    search_dict[object_name][HSV_LO] = hsv_dict[HSV_LO]
+    
+
+    file_name = "updated"
+    file_path = HSV_BOUNDS + "/" + file_name + ".csv"
+
+    save_search_dict_to_csv(search_dict, file_path)
+    print(f"saved {file_name} to {HSV_BOUNDS}")
 
 
 

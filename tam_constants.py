@@ -1,8 +1,6 @@
 import numpy as np
 from tam_colors import *
 
-
-
 # Camera Constants
 CAMERA_CAPTURE_X = 640
 CAMERA_CAPTURE_Y = 480
@@ -70,51 +68,9 @@ BLUE_TEAM = "BLUE"
 FUCHSIA_SIDE = "FUCHSIA"
 GREEN_SIDE = "GREEN"
 
+# path to hsv csv to be used
+HSV_CSV_PATH = "hsv_bounds/updated.csv"
 
-search_dict = {
-    BALL_RED: {
-        DRAW_COLOR: RED,
-        HSV_LO: np.array([169, 213, 67], dtype=np.uint8),
-        HSV_HI: np.array([179, 255, 147], dtype=np.uint8),
-        KNOWN_WIDTH: BALL_RED_DIAM_IN,
-        ANALYSIS_SHAPE : CIRC,
-    },
-    BALL_YELLOW: {
-        DRAW_COLOR: YELLOW,
-        HSV_HI: np.array([33, 207, 226]),
-        HSV_LO: np.array([13, 127, 146]),
-        KNOWN_WIDTH: BALL_YELLOW_DIAM_IN,
-        ANALYSIS_SHAPE : CIRC,
-    },
-    HAT_BLUE: {
-        DRAW_COLOR: BLUE,
-        HSV_LO: np.array([90, 163, 125], dtype=np.uint8),
-        HSV_HI: np.array([110, 255, 205], dtype=np.uint8),
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-    HAT_YELLOW: {
-        DRAW_COLOR: YELLOW,
-        HSV_LO: np.array([22, 150, 174], dtype=np.uint8),
-        HSV_HI: np.array([42, 210, 228], dtype=np.uint8),
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-    HAT_FUCHSIA: {
-        DRAW_COLOR: FUCHSIA,
-        HSV_LO: "to_be_determined",
-        HSV_HI: "to_be_determined",
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-    HAT_GREEN: {
-        DRAW_COLOR: GREEN,
-        HSV_LO: "to_be_determined",
-        HSV_HI: "to_be_determined",
-        KNOWN_WIDTH: HAT_DIAM_IN,
-        ANALYSIS_SHAPE : RECT,
-    },
-}
 
 
 # direction constants

@@ -87,9 +87,14 @@ def get_field_frame(USE_DRAWN_FIELD : bool = True) -> np.ndarray:
 
     if USE_DRAWN_FIELD:
         frame = load_image_as_frame("field_pngs/field_empty.png")
+        style = "drawn"
     else:
         frame = load_image_as_frame("field_pngs/field_black.png")
+        style = "black"
 
+    
+
+    print(f"loaded empty field frame {style}")
     return frame
 
 
