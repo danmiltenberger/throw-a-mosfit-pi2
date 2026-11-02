@@ -1,7 +1,45 @@
-from tam_frame import get_field_frame, load_image_as_frame, show_frame, load_video_as_list_of_frames
-from tam_hsv import load_search_dict_from_csv
-from tam_vision import example_vision_full_stack
+
 import cv2
+from tam_classes import FieldState
+from tam_frame import get_field_frame, load_image_as_frame, show_frame, load_video_as_list_of_frames, concat_frames
+from tam_hsv import load_search_dict_from_csv
+from tam_vision import example_vision_full_stack, get_fieldstate_from_frame
+from tam_draw import draw_fieldstate
+
+
+def main():
+    vid_path = ""
+
+
+
+def vision_and_decision_from_vid(vid_path: str):
+    frame_field = get_field_frame(USE_DRAWN_FIELD= False)
+    search_dict = load_search_dict_from_csv()
+
+    list_frames_camera = load_video_as_list_of_frames("training_data/red_ball_vid.h264")
+
+    prev_fieldstate = FieldState()
+
+    for frame_camera in list_frames_camera:
+
+        this_fieldstate = get_fieldstate_from_frame(frame= frame_camera, prev_fieldstate=prev_fieldstate, search_dict= search_dict)
+
+        frame_field = draw_fieldstate(field_frame=frame_field.copy(), fieldstate=this_fieldstate)
+
+
+        side_by_side = concat_frames(frame_camera.copy(), frame_field, "RIGHT")
+
+        cv2.imshow("Side by side", side_by_side)
+
+
+        prev_fieldstate = this_fieldstate
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+
+
+
+
 
 
 
@@ -36,6 +74,4 @@ def vision_full_stack_video():
 # Example usage
 if __name__ == "__main__":
 
-    vision_full_stack_one_frame()
-
-    vision_full_stack_video()
+    main()

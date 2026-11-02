@@ -4,12 +4,13 @@ from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
 import time
 import cv2
 from tam_buttons import *
-from tam_frame import get_field_frame, show_frame_in_loop
+from tam_frame import get_field_frame
 from tam_classes import BotCommand
 from tam_camera import get_frame
-from tam_frame import save_frame_as_png
+from tam_frame import save_frame_as_png, show_frame_in_loop
 from tam_lcd import write_lcd_lines
 from tam_hsv import load_search_dict_from_csv
+from tam_vision import example_vision_full_stack
 
 def one_v_one_match(match_settings: dict, picam2):
 
@@ -41,10 +42,7 @@ def one_v_one_match(match_settings: dict, picam2):
                 save_frame_as_png(frame_og)
             return
 
-        #frame_vision_stack = vision_full_stack(frame.copy(), frame_field=field_frame.copy(), search_dict=search_dict)
-
-
-
+        frame_vision_stack = example_vision_full_stack(frame.copy(), frame_field=field_frame.copy(), search_dict=search_dict)
 
 
         # print information to the LCD
@@ -56,9 +54,9 @@ def one_v_one_match(match_settings: dict, picam2):
         row4 = match_settings[BUTTON_STATUS]
         write_lcd_lines([row1,row2, row3, row4])
 
-        # show the camera to the user
-        # if not show_frame_in_loop(frame_vision_stack):
-        #     break
+        #show the camera to the user
+        if not show_frame_in_loop(frame_vision_stack):
+            break
 
 
 
