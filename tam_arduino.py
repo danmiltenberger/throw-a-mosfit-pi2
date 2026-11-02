@@ -19,7 +19,7 @@ def send_to_arduino(connection, message):
 
 
 def send_command_to_arduino(command : BotCommand):
-    port = "/dev/ttyACM0"  # Replace with your Arduino's serial port.
+    port = "/dev/ttyACM0"  # Replace with ard serial port
 
     print(f"attempting communication with {port}")
 

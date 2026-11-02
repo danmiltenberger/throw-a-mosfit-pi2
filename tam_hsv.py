@@ -10,6 +10,43 @@ import csv
 import numpy as np
 
 
+def main():
+
+    csv_name = "classroom"
+
+    ball_path = "hsv_photos/goalposts_and_ball.png"
+    goalpost_green_path = ball_path
+    goalpost_purple_path = ball_path
+    hat_yellow_path = "hsv_photos/hat_yellow.png"
+    hat_blue_path = "hsv_photos/hat_blue.png"
+
+    #update_hsv(csv_name=csv_name, image_path= ball_path, object_name= BALL_RED)
+    update_hsv(csv_name=csv_name, image_path= goalpost_green_path, object_name= HAT_GREEN)
+    update_hsv(csv_name=csv_name, image_path= goalpost_purple_path, object_name= HAT_FUCHSIA)
+    update_hsv(csv_name=csv_name, image_path= hat_yellow_path, object_name= HAT_YELLOW)
+    update_hsv(csv_name=csv_name, image_path= hat_blue_path, object_name= HAT_BLUE)
+
+
+
+
+def update_hsv(object_name : str, image_path: str, csv_name: str):
+
+
+    print(f"TUNE VALUES FOR {object_name}")
+    search_dict = load_search_dict_from_csv()
+    hsv_dict = tune_hsv_range(image_path=image_path)
+
+    search_dict[object_name][HSV_HI] = hsv_dict[HSV_HI]
+    search_dict[object_name][HSV_LO] = hsv_dict[HSV_LO]
+    
+    file_path = HSV_BOUNDS + "/" + csv_name + ".csv"
+
+    save_search_dict_to_csv(search_dict, file_path)
+    print(f"saved {csv_name} to {HSV_BOUNDS}")
+
+
+
+
 def save_search_dict_to_csv(search_dict, filename):
     """Save a nested search dictionary to a CSV file."""
     fieldnames = [
@@ -68,7 +105,6 @@ def load_search_dict_from_csv(filename : str = HSV_CSV_PATH):
 
     print(f"loaded search_dict from {filename}")
     return search_dict
-
 
 
 def tune_hsv_range(image_path, output_txt="hsv_range.txt"):
@@ -268,27 +304,6 @@ def tune_hsv_range(image_path, output_txt="hsv_range.txt"):
     }
 
     return return_dict
-
-
-def main():
-
-
-    search_dict = load_search_dict_from_csv("hsv_bounds/initial.csv")
-
-    object_name = BALL_RED
-    image_path = "training_data/red_ball_centerframe.png"
-
-    hsv_dict = tune_hsv_range(image_path=image_path)
-
-    search_dict[object_name][HSV_HI] = hsv_dict[HSV_HI]
-    search_dict[object_name][HSV_LO] = hsv_dict[HSV_LO]
-    
-
-    file_name = "updated"
-    file_path = HSV_BOUNDS + "/" + file_name + ".csv"
-
-    save_search_dict_to_csv(search_dict, file_path)
-    print(f"saved {file_name} to {HSV_BOUNDS}")
 
 
 
