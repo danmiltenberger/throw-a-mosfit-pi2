@@ -20,7 +20,7 @@ def main():
     hat_yellow_path = "hsv_photos/hat_yellow.png"
     hat_blue_path = "hsv_photos/hat_blue.png"
 
-    #update_hsv(csv_name=csv_name, image_path= ball_path, object_name= BALL_RED)
+    update_hsv(csv_name=csv_name, image_path= ball_path, object_name= BALL_RED)
     update_hsv(csv_name=csv_name, image_path= goalpost_green_path, object_name= HAT_GREEN)
     update_hsv(csv_name=csv_name, image_path= goalpost_purple_path, object_name= HAT_FUCHSIA)
     update_hsv(csv_name=csv_name, image_path= hat_yellow_path, object_name= HAT_YELLOW)
@@ -33,13 +33,12 @@ def update_hsv(object_name : str, image_path: str, csv_name: str):
 
 
     print(f"TUNE VALUES FOR {object_name}")
-    search_dict = load_search_dict_from_csv()
+    file_path = HSV_BOUNDS + "/" + csv_name + ".csv"
+    search_dict = load_search_dict_from_csv(filename=file_path)
     hsv_dict = tune_hsv_range(image_path=image_path)
 
     search_dict[object_name][HSV_HI] = hsv_dict[HSV_HI]
     search_dict[object_name][HSV_LO] = hsv_dict[HSV_LO]
-    
-    file_path = HSV_BOUNDS + "/" + csv_name + ".csv"
 
     save_search_dict_to_csv(search_dict, file_path)
     print(f"saved {csv_name} to {HSV_BOUNDS}")

@@ -4,6 +4,7 @@ from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState
 import math
 from tam_colors import *
 from tam_constants import *
+from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot
 
 
 PIXELS_PER_INCH = 5
@@ -848,6 +849,60 @@ def add_text_top(
     return frame
 
 
+def add_text_left_of_point(
+    frame : np.ndarray,
+    lines : list[str],
+    center_left: Point,
+    left_offset: int = 0,
+    font=cv2.FONT_HERSHEY_SIMPLEX,
+    font_scale: float = 0.7,
+    color=(255, 255, 255),
+    thickness: int = 2,
+    line_spacing: int = 10,
+):
+    """
+    Draw `lines` vertically centered around center_left.y, with all lines
+    left-aligned at center_left.x + left_offset.
+
+    `center_left` is a Point-like object with .x and .y attributes.
+    """
+    if not lines:
+        return frame
+
+    # Measure each line
+    text_sizes = []
+    for text in lines:
+        (w, h), baseline = cv2.getTextSize(
+            text, font, font_scale, thickness
+        )
+        text_sizes.append((w, h, baseline))
+
+    line_heights = [h + baseline for _, h, baseline in text_sizes]
+    total_height = sum(line_heights) + line_spacing * (len(lines) - 1)
+
+    # Start at the top of the text block
+    y = center_left.y - total_height // 2
+    x = center_left.x + left_offset
+
+    for text, (_, h, baseline) in zip(lines, text_sizes):
+        # putText's origin is the bottom-left of the text
+        cv2.putText(
+            img=frame,
+            text=text,
+            org=(int(x), int(y) + h),
+            fontFace=font,
+            fontScale=font_scale,
+            color=color,
+            thickness=thickness,
+            lineType=cv2.LINE_AA,
+        )
+        y += h + baseline + line_spacing
+
+    return frame
+
+
+
+
 def draw_object_to_frame(
     frame: np.ndarray,
     object_dict: dict,
@@ -882,7 +937,7 @@ def draw_object_to_frame(
             f"object_dict must be dict, got {type(object_dict).__name__}"
         )
 
-    required_keys = {"WIDTH_PX", "AREA_PX", "CENTER_X_PX", "CENTER_Y_PX", "SHAPE"}
+    required_keys = {"WIDTH_PX", "AREA_PX", "CENTER_X_PX", "CENTER_Y_PX", "SHAPE", OBJECT_NAME}
     missing_keys = required_keys - object_dict.keys()
     if missing_keys:
         raise KeyError(
@@ -945,7 +1000,12 @@ def draw_object_to_frame(
     elif shape == "no_shape":
         pass
 
+
     return frame
+
+
+
+
 
 
 def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState) -> np.ndarray:

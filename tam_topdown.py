@@ -1,13 +1,17 @@
 from tam_constants import SCREEN_CENTER_X
 from tam_classes import Point
 import math
+import numpy as np
 
 FOCAL_LENGTH = 1253.333     # recalc this when able
 
 
 def calc_distance_from_bot(known_width_in: float, percieved_width_px) -> float:
 
-    Z = (known_width_in * FOCAL_LENGTH) / percieved_width_px
+    try:
+        Z = (known_width_in * FOCAL_LENGTH) / percieved_width_px
+    except ZeroDivisionError:
+        Z = np.inf
     return Z
 
 

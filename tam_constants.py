@@ -49,6 +49,7 @@ AREA_PX = "AREA_PX"
 SHAPE = "SHAPE"
 CENTER_X_PX = "CENTER_X_PX"
 CENTER_Y_PX = "CENTER_Y_PX"
+OBJECT_NAME = "OBJECT_NAME"
 
 # known widths
 BALL_RED_DIAM_IN : float = 7
@@ -75,7 +76,7 @@ FUCHSIA_SIDE = "FUCHSIA"
 GREEN_SIDE = "GREEN"
 
 # path to hsv csv to be used
-HSV_CSV_PATH = "hsv_bounds/updated.csv"
+HSV_CSV_PATH = "hsv_bounds/classroom.csv"
 
 
 
