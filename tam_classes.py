@@ -59,22 +59,17 @@ class FieldState:
     '''a class to contain all the information needed to draw the current state of the field. 
     EVERYTHING in inches or radians'''
 
-    found_dict = {}
     timestep: float = 0
+
+
+    # defining the match
+    our_team_color : tuple[int,int,int] = YELLOW
+    their_team_color : tuple[int,int,int] = BLUE
+    our_left_goalpost : tuple[int,int,int] = PURPLE
 
     # defining our bot
     our_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
     our_bot_bearing_rad: float = BEARING_NORTH
-
-    # defining the current bot command (and duration)
-    our_bot_command : str = "NO_COMMAND"
-    our_bot_command_duration : float = 0
-    our_bot_command_elapsed_time : float = 0
-
-    # defining the 'capture zone' where if the ball is within this zone it is considered captured
-    our_bot_capture_zone_dis_ahead_in : float = 10
-    our_bot_capture_zone_radius : float = 5
-    capture_zone_center: Point = field(default_factory=lambda: Point(0, 0))
 
     # defining their bot
     their_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
@@ -94,6 +89,11 @@ class FieldState:
     goalpost_northeast_is_seen : bool = False
     goalpost_southwest_is_seen : bool = False
     goalpost_southeast_is_seen : bool = False
+
+    # defining the 'capture zone' where if the ball is within this zone it is considered captured
+    our_bot_capture_zone_dis_ahead_in : float = 10
+    our_bot_capture_zone_radius : float = 5
+    capture_zone_center: Point = field(default_factory=lambda: Point(0, 0))
 
     # define what position and bearing the bot wants to achieve
     our_bot_target_pos : Point = field(default_factory=lambda: Point(0, 0))

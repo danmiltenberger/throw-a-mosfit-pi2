@@ -6,9 +6,8 @@ import cv2
 from tam_buttons import *
 from tam_frame import get_field_frame, show_frame_in_loop
 from tam_classes import BotCommand
-from tam_vision import get_frame
+from tam_camera import get_frame
 from tam_frame import save_frame_as_png
-from example_stack import vision_full_stack
 from tam_lcd import write_lcd_lines
 from tam_hsv import load_search_dict_from_csv
 
@@ -42,7 +41,11 @@ def one_v_one_match(match_settings: dict, picam2):
                 save_frame_as_png(frame_og)
             return
 
-        frame_vision_stack = vision_full_stack(frame.copy(), frame_field=field_frame.copy(), search_dict=search_dict)
+        #frame_vision_stack = vision_full_stack(frame.copy(), frame_field=field_frame.copy(), search_dict=search_dict)
+
+
+
+
 
         # print information to the LCD
         time_current = time.perf_counter()
@@ -54,8 +57,8 @@ def one_v_one_match(match_settings: dict, picam2):
         write_lcd_lines([row1,row2, row3, row4])
 
         # show the camera to the user
-        if not show_frame_in_loop(frame_vision_stack):
-            break
+        # if not show_frame_in_loop(frame_vision_stack):
+        #     break
 
 
 

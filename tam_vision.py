@@ -6,45 +6,15 @@ import numpy as np
 
 import cv2
 import numpy as np
-from picamera2 import Picamera2
+from tam_classes import FieldState, Point
+from tam_constants import BALL_RED, HSV_HI, HSV_LO, WIDTH_PX, AREA_PX, CENTER_X_PX, CENTER_Y_PX, SHAPE, KNOWN_WIDTH, BEARING_NORTH
+from tam_points import FIELD_GOALBOX_CENTER_BOTTOM
+from tam_colors import YELLOW
+from tam_topdown import calc_distance_from_bot, calc_angle_from_screen_center, convert_to_field
+from tam_draw import add_text_top, draw_robot_to_field, draw_ball_to_field, draw_top_down_arrows
+from tam_frame import concat_frames
+from typing import Sequence
 
-
-def get_frame(picam2: Picamera2, stream_name: str = "main") -> np.ndarray:
-    """
-    Get the current frame from a configured, started Picamera2 camera.
-
-    Args:
-        picam2: An initialized and started Picamera2 instance.
-        stream_name: Name of the configured capture stream, usually "main".
-
-    Returns:
-        np.ndarray: Current frame in OpenCV BGR format, shape (height, width, 3).
-    """
-    if not isinstance(picam2, Picamera2):
-        raise TypeError(
-            f"picam2 must be a Picamera2 instance, got {type(picam2).__name__}"
-        )
-
-    if not isinstance(stream_name, str) or not stream_name:
-        raise ValueError("stream_name must be a non-empty string")
-
-    # Picamera2 returns an RGB888 array by default for RGB streams.
-    frame_rgb = picam2.capture_array(stream_name)
-
-    if not isinstance(frame_rgb, np.ndarray):
-        raise TypeError(
-            f"Expected Picamera2 to return numpy.ndarray, got {type(frame_rgb).__name__}"
-        )
-
-    if frame_rgb.ndim != 3 or frame_rgb.shape[2] != 3:
-        raise ValueError(
-            f"Expected an RGB image with shape (H, W, 3), got {frame_rgb.shape}"
-        )
-
-    # Convert RGB (Picamera2) to BGR (OpenCV).
-    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-
-    return frame_bgr
 
 
 def get_hsv_frame(frame: np.ndarray) -> np.ndarray:
@@ -58,7 +28,7 @@ def get_mask_frame(hsv_frame: np.ndarray, hsv_lo, hsv_hi) -> np.ndarray:
     return mask
 
 
-def get_contours(frame_mask: np.ndarray) -> tuple:
+def get_contours(frame_mask: np.ndarray) -> Sequence:
     """Find external contours in a binary/grayscale mask.
 
     Returns:
@@ -83,7 +53,7 @@ def get_contours(frame_mask: np.ndarray) -> tuple:
         cv2.CHAIN_APPROX_SIMPLE,
     )
 
-    return contours, hierarchy
+    return contours
 
 
 def get_object_info_from_contours(
@@ -102,13 +72,6 @@ def get_object_info_from_contours(
     If multiple contours are supplied, their measurements are combined into
     one bounding region and total area.
     """
-
-    #dict_keys
-    WIDTH_PX = "WIDTH_PX"
-    AREA_PX = "AREA_PX"
-    SHAPE = "SHAPE"
-    CENTER_X_PX = "CENTER_X_PX"
-    CENTER_Y_PX = "CENTER_Y_PX"
 
     if contours is None:
         raise TypeError("contours must not be None")
@@ -177,5 +140,135 @@ def get_object_info_from_contours(
         CENTER_Y_PX: float(center_y),
         SHAPE : shape,
     }
+
+
+def search_for_ball(hsv_frame: np.ndarray, fieldstate: FieldState, search_dict:dict) -> FieldState:
+
+    hsv_lo = search_dict[BALL_RED][HSV_LO]
+    hsv_hi = search_dict[BALL_RED][HSV_HI]
+    known_width_in = search_dict[BALL_RED][KNOWN_WIDTH]
+
+    mask_frame = get_mask_frame(hsv_frame= hsv_frame, hsv_hi= hsv_hi, hsv_lo= hsv_lo)
+
+    contours = get_contours(mask_frame)
+
+    # if we don't find anything, it's not in frame
+    if len(contours) == 0:
+        fieldstate.ball_is_seen = False
+        return fieldstate
+
+    # otherwise let's evaluate the contours
+    object_info = get_object_info_from_contours(contours, analyze_as_circle=True)
+
+    width_px = object_info[WIDTH_PX]
+    screen_x = object_info[CENTER_X_PX]
+    screen_y = object_info[CENTER_Y_PX]
+
+    ball_distance_in = calc_distance_from_bot(known_width_in, width_px)
+
+    screen_center = Point(screen_x, screen_y)
+    ball_angle_rad = calc_angle_from_screen_center(screen_center)
+
+    fieldstate.ball_pos_in = convert_to_field(
+        object_bearing_rad= ball_angle_rad,
+        object_dis= ball_distance_in,
+        robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+        robot_pos= fieldstate.our_bot_pos_in,
+    )
+
+    return fieldstate
+
+
+def get_fieldstate_from_frame(frame: np.ndarray, prev_fieldstate: FieldState | None, search_dict : dict) -> FieldState:
+    ''' Look through the frame and determine objects, positions, etc
+    '''
+
+    # some determinations require previous values. If not supplied, use defaults
+    if prev_fieldstate is None:
+        prev_fieldstate = FieldState()
+
+    # start by assuming that nothing has changed, to be overwritten below
+    new_fieldstate = prev_fieldstate
+
+    hsv_frame = get_hsv_frame(frame)
+
+
+
+    return new_fieldstate
+
+
+
+def example_vision_full_stack(frame_camera : np.ndarray, frame_field: np.ndarray, search_dict : dict) -> np.ndarray:
+    robot_pos = FIELD_GOALBOX_CENTER_BOTTOM
+    robot_rad = BEARING_NORTH
+    robot_color = YELLOW
+
+
+    # put our bot at our goalbox
+    frame_field = add_text_top(frame_field, "FIELD")
+    frame_field = draw_robot_to_field(
+        field_frame= frame_field,
+        bearing_rad= robot_rad,
+        pos_in= robot_pos,
+        color= robot_color
+    )
+
+
+    frame_hsv = get_hsv_frame(frame_camera.copy())
+
+    # load the hsv bounds and filter
+    hsv_lo = search_dict[BALL_RED][HSV_LO]
+    hsv_hi = search_dict[BALL_RED][HSV_HI]
+    frame_mask = get_mask_frame(frame_hsv.copy(), hsv_hi=hsv_hi, hsv_lo=hsv_lo)
+
+    # determine the contours
+    contours = get_contours(frame_mask=frame_mask)
+    object_info = get_object_info_from_contours(contours, analyze_as_circle= True)
+
+    # if it find's the ball, calculate and draw it
+    if object_info["WIDTH_PX"] > 0:
+
+        # determine the range and angle to the ball
+        known_width_in = search_dict[BALL_RED][KNOWN_WIDTH]
+        dis_from_bot_in = calc_distance_from_bot(known_width_in=known_width_in, percieved_width_px= object_info["WIDTH_PX"])
+
+        center_on_screen = Point(object_info["CENTER_X_PX"], object_info["CENTER_Y_PX"])
+        ang_from_bot_rad = calc_angle_from_screen_center(point=center_on_screen)
+
+        ball_pos_in : Point = convert_to_field(
+            object_bearing_rad= ang_from_bot_rad,
+            object_dis= dis_from_bot_in,
+            robot_bearing_rad= robot_rad,
+            robot_pos= robot_pos
+        )
+
+        # add the ball to the field
+        frame_field = draw_ball_to_field(frame_field, ball_pos_in)
+
+        # draw arrows explaining
+        frame_field = draw_top_down_arrows(
+            field_frame= frame_field,
+            ref_bearing_rad= robot_rad,
+            ref_point_in= robot_pos,
+            target_point_in= ball_pos_in,
+        )
+
+
+    ### Show User
+    # combine frames together to more easily compare
+    # frame mask is black and white but concat_frames needs color
+    frame_mask = cv2.cvtColor(frame_mask, cv2.COLOR_GRAY2BGR)
+    frame_mask = add_text_top(frame_mask, "MASK")
+    frame_camera = add_text_top(frame_camera, "ORIGINAL")
+
+    left_col = concat_frames(frame_camera, frame_mask, "DOWN")
+
+    combined_frame = concat_frames(left_col, frame_field, "RIGHT")
+
+    return combined_frame
+
+
+
+
 
 

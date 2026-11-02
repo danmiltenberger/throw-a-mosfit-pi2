@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from tam_classes import Point, get_point_int_tuple, Rectangle
+from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState
 import math
 from tam_colors import *
 from tam_constants import *
@@ -947,3 +947,41 @@ def draw_object_to_frame(
 
     return frame
 
+
+def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState) -> np.ndarray:
+
+    # draw our bot
+    field_frame = draw_robot_to_field(
+        field_frame= field_frame,
+        bearing_rad= fieldstate.our_bot_bearing_rad,
+        pos_in= fieldstate.our_bot_pos_in,
+        color= fieldstate.our_team_color
+    )
+
+    # draw the ball
+    if fieldstate.ball_is_seen:
+
+        if fieldstate.ball_is_ours:
+            outline_color = fieldstate.our_team_color
+        elif fieldstate.ball_is_theirs:
+            outline_color = fieldstate.their_team_color
+        else:
+            outline_color = BLACK
+
+        field_frame = draw_ball_to_field(
+            field_frame= field_frame,
+            ball_pos_in= fieldstate.ball_pos_in,
+            outline_color= outline_color
+        )
+
+    # draw the opponent
+    if fieldstate.their_bot_is_seen:
+        field_frame = draw_robot_to_field(
+            field_frame= field_frame,
+            bearing_rad= fieldstate.their_bot_bearing_rad,
+            pos_in= fieldstate.their_bot_pos_in,
+            color= fieldstate.their_team_color
+        )
+
+    
+    return field_frame
