@@ -181,6 +181,8 @@ def get_object_info_from_name(
     # otherwise let's evaluate the contours
     object_info = get_object_info_from_contours(contours, analyze_as_circle)
 
+    object_info[OBJECT_NAME] = OBJECT_NAME
+
     return object_info
 
 
