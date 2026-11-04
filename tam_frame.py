@@ -321,3 +321,12 @@ def load_video_as_list_of_frames(vid_path: str) -> list[np.ndarray]:
 
     return frames
 
+
+# Source - https://stackoverflow.com/a/9042907
+# Posted by Alex Rodrigues, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-11-03, License - CC BY-SA 4.0
+def rotate_image(image, angle):
+  image_center = tuple(np.array(image.shape[1::-1]) / 2)
+  rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+  result = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+  return result

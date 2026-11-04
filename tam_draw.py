@@ -6,7 +6,7 @@ from tam_colors import *
 from tam_constants import *
 from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot, convert_to_field, robot_pos_from_object
 from tam_decide import determine_goalpost_position
-from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER
+from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER_TOP
 
 
 PIXELS_PER_INCH = 5
@@ -274,6 +274,18 @@ def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color
 
     return frame
 
+
+def draw_line_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK) -> np.ndarray:
+    
+    frame = cv2.line(
+        img=frame,
+        pt1=get_point_int_tuple(start),
+        pt2=get_point_int_tuple(end),
+        color=color,
+        thickness= PIXELS_PER_INCH
+    )
+
+    return frame
 
 
 def draw_notched_rectangle(
@@ -1035,7 +1047,7 @@ def draw_circle_to_frame(frame: np.ndarray, center: Point, radius: int, color: t
     return frame
 
 
-def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detection, draw_arrow: bool = True) -> np.ndarray:
+def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detection, draw_arrow: bool = True, label="") -> np.ndarray:
     '''draw a circle around the detection in the camera frame if possible'''
 
     
@@ -1046,10 +1058,15 @@ def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detectio
     draw_color = color_dict[detection.name]
     camera_frame = draw_circle_to_frame(camera_frame, detection.camera_pos_px, radius= int(detection.width_px/2), color=draw_color)
 
+    if label != "":
+        line1 = label
+    else:
+        line1 = str(detection.name)
+
     lines = [
-        str(detection.name),
-        f"{round(detection.dis_from_bot_in)} in",
-        f"{round(detection.area_px)} px area"
+        line1,
+        f"{round(detection.dis_from_bot_in)}in {round(math.degrees(detection.ang_from_bot_rad))}deg",
+        #f"{round(detection.area_px)} px area"
     ]
 
     camera_frame = add_text_left_of_point(camera_frame, center_left= detection.camera_pos_px, lines=lines, left_offset= int((detection.width_px/2)*1.2) )
@@ -1061,12 +1078,16 @@ def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detectio
     return camera_frame
 
 
-def draw_detection_list_to_camera_frame(camera_frame: np.ndarray, detect_list : list[Detection]) -> np.ndarray:
+def draw_detection_list_to_camera_frame(camera_frame: np.ndarray, detect_list : list[Detection], draw_centerline: bool = True) -> np.ndarray:
 
     for detection in detect_list:
         detection : Detection
 
         camera_frame = draw_detection_to_camera_frame(camera_frame, detection)
+
+
+    if draw_centerline:
+        camera_frame = draw_line_point_to_point(camera_frame, CAMERA_CENTER_BOTTOM, CAMERA_CENTER_TOP, color= WHITE)
 
     return camera_frame
 

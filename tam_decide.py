@@ -400,6 +400,15 @@ def try_to_update_robot_pos_from_goalposts(goalpost_green : Detection, goalpost_
     return fieldstate
 
 
+def convert_detect_list_to_dict(detect_list: list[Detection]) -> dict[str, Detection]:
+    '''convert to a dictionary with name : detection key value pairs so we can update things in order'''
+    detect_dict = {}
+    for detect in detect_list:
+        detect : Detection
+
+        detect_dict[detect.name] = detect
+    return detect_dict
+
 def convert_detect_list_to_fieldstate(detect_list : list[Detection], prev_fieldstate: FieldState | None = None) -> FieldState:
     '''from the list of detected objects, update the fieldstate dataclass'''
 
@@ -409,13 +418,7 @@ def convert_detect_list_to_fieldstate(detect_list : list[Detection], prev_fields
     else:
         fieldstate = prev_fieldstate
 
-    detect_dict : dict = {}
-
-    # convert to a dictionary with name : detection key value pairs so we can update things in order
-    for detect in detect_list:
-        detect : Detection
-
-        detect_dict[detect.name] = detect
+    detect_dict : dict = convert_detect_list_to_dict(detect_list)
 
     # now unpack them to be more easily worked with
     goalpost_green : Detection = detect_dict[HAT_GREEN]
