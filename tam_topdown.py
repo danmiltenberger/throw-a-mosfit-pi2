@@ -34,7 +34,7 @@ def calc_angle_from_screen_center(point: Point) -> float:
     pixel_x = point.x
     delta_x = pixel_x - SCREEN_CENTER_X
 
-    return -math.atan2(delta_x, FOCAL_LENGTH)
+    return math.atan2(delta_x, FOCAL_LENGTH)
 
 
 def convert_to_field(

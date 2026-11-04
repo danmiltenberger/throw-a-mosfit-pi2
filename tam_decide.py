@@ -9,8 +9,22 @@ from tam_ourbot import *
 from tam_points import *
 from tam_colors import PURPLE, GREEN
 from tam_topdown import robot_pos_from_object, convert_to_field
-from tam_constants import HAT_BLUE, HAT_FUCHSIA, HAT_GREEN, HAT_YELLOW, BALL_RED
+from tam_constants import HAT_BLUE, HAT_FUCHSIA, HAT_GREEN, HAT_YELLOW, BALL_RED, BEARING_NORTH, BEARING_SOUTH
 
+
+
+def get_init_fieldstate(match_settings: dict = {}) -> FieldState:
+    fieldstate = FieldState()
+
+    fieldstate.our_bot_pos_in = FIELD_GOALBOX_CENTER_BOTTOM
+    fieldstate.our_bot_bearing_rad = BEARING_NORTH
+
+    fieldstate.their_bot_pos_in = FIELD_GOAL_CENTER_TOP
+    fieldstate.their_bot_bearing_rad = BEARING_SOUTH
+
+    fieldstate.ball_pos_in = FIELD_CENTER
+
+    return fieldstate
 
 
 def is_on_line(point_in_q: Point, line: Line) -> bool:
@@ -64,7 +78,6 @@ def is_within_circ(point_in_q: Point, circle_center: Point, cicle_rad: float) ->
     dy = point_in_q.y - circle_center.y
 
     return dx * dx + dy * dy <= cicle_rad * cicle_rad
-
 
 
 def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, dur_max_sec : float = 2) -> BotCommand:
@@ -387,10 +400,14 @@ def try_to_update_robot_pos_from_goalposts(goalpost_green : Detection, goalpost_
     return fieldstate
 
 
-def convert_detect_list_to_fieldstate(detect_list : list[Detection]) -> FieldState:
+def convert_detect_list_to_fieldstate(detect_list : list[Detection], prev_fieldstate: FieldState | None = None) -> FieldState:
     '''from the list of detected objects, update the fieldstate dataclass'''
 
-    fieldstate = FieldState()
+    # create a new default or use the previous state
+    if prev_fieldstate is None:
+        fieldstate = FieldState()
+    else:
+        fieldstate = prev_fieldstate
 
     detect_dict : dict = {}
 
@@ -411,8 +428,11 @@ def convert_detect_list_to_fieldstate(detect_list : list[Detection]) -> FieldSta
     if goalpost_green.in_frame or goalpost_purpl.in_frame:
         fieldstate = try_to_update_robot_pos_from_goalposts(goalpost_purple=goalpost_purpl, goalpost_green=goalpost_green, fieldstate=fieldstate)
 
-    # add the ball
+    # try to add the ball to the state, otherwise it stays the same as previous state
     if ball_red.in_frame:
+
+        fieldstate.ball_is_seen = True
+
         fieldstate.ball_pos_in = convert_to_field(
             object_bearing_rad= ball_red.ang_from_bot_rad,
             object_dis= ball_red.dis_from_bot_in,
@@ -420,8 +440,11 @@ def convert_detect_list_to_fieldstate(detect_list : list[Detection]) -> FieldSta
             robot_pos= fieldstate.our_bot_pos_in
         )
 
-    # add our opponent bot
+    # try to add our opponent, otherwise it stays the same as previous state
     if bot_blue.in_frame:
+
+        fieldstate.their_bot_is_seen = True
+
         fieldstate.their_bot_pos_in = convert_to_field(
             object_bearing_rad= bot_blue.ang_from_bot_rad,
             object_dis= bot_blue.dis_from_bot_in,
@@ -429,7 +452,11 @@ def convert_detect_list_to_fieldstate(detect_list : list[Detection]) -> FieldSta
             robot_pos= fieldstate.our_bot_pos_in
         )
 
+    # TODO - only search for yellow or blue, save some time during the match
     if bot_yellow.in_frame:
+
+        fieldstate.their_bot_is_seen = True
+
         fieldstate.their_bot_pos_in = convert_to_field(
             object_bearing_rad= bot_yellow.ang_from_bot_rad,
             object_dis= bot_yellow.dis_from_bot_in,

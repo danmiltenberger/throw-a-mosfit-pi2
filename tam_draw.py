@@ -1075,19 +1075,19 @@ def clamp_to_field(given_point_in: Point, label: str = "") -> Point:
     '''ensure that the point is on the field'''
 
     if given_point_in.x < 0:
-        print(f"{label} clamped left")
+        #print(f"{label} clamped left")
         given_point_in.x = 0
 
     if given_point_in.x > playing_field_in_x:
-        print(f"{label} clamped right")
+        #print(f"{label} clamped right")
         given_point_in.x = playing_field_in_x
 
     if given_point_in.y < 0:
-        print(f"{label} clamped bottom")
+        #print(f"{label} clamped bottom")
         given_point_in.y = 0
 
     if given_point_in.y > playing_field_in_y:
-        print(f"{label} clamped top")
+        #print(f"{label} clamped top")
         given_point_in.y = playing_field_in_y
 
     return given_point_in
