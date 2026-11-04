@@ -1,12 +1,15 @@
 
-### all the functions that help the robot reach a conclusion
+import numpy as np
 import math
 import time
 from typing import Literal
-from tam_classes import Point, Line, FieldState, BotCommand, get_capture_zone_point
+from tam_classes import Point, Line, FieldState, BotCommand, get_capture_zone_point, Detection
 from tam_commands import *
 from tam_ourbot import *
 from tam_points import *
+from tam_colors import PURPLE, GREEN
+from tam_topdown import robot_pos_from_object, convert_to_field
+from tam_constants import HAT_BLUE, HAT_FUCHSIA, HAT_GREEN, HAT_YELLOW, BALL_RED
 
 
 
@@ -296,5 +299,143 @@ def has_N_seconds_passed(time_start: float, N_sec: float) -> bool:
         return False
 
 
+def determine_goalpost_position(fieldstate : FieldState) -> Point | None:
+    '''by considering our position and direction, determine if the goalpost in frame is Northeast, Northwest, Southeast, or Southwest'''
+
+    # if we see neither goal then there is nothing to be done
+    if (fieldstate.goalpost_green_is_seen == False) and (fieldstate.goalpost_purple_is_seen == False):
+        return None
 
 
+    # otherwise let's determine if we are facing north towards their goal or south towards our goal (our goal is ALWAYS south)
+    bot_is_facing_north : bool = False
+
+    if 0 <= fieldstate.our_bot_bearing_rad <= np.pi:
+        bot_is_facing_north = True
+    
+
+    if bot_is_facing_north:
+
+        # if we are facing north and see a purple goalpost
+        if fieldstate.goalpost_purple_is_seen:
+
+            # if we know that the purple goalpost should be on the west, it's the northwest goalpost
+            if fieldstate.our_west_goalpost == PURPLE:
+                return GOALPOST_NORTHWEST
+
+            # otherwise it's the Northeast
+            else:
+                return GOALPOST_NORTHEAST
+
+        # if we are facing north and see a green goalpost
+        elif fieldstate.goalpost_green_is_seen:
+
+            # if we know that the green goalpost should be on the west, it's the northwest goalpost
+            if fieldstate.our_west_goalpost == GREEN:
+                return GOALPOST_NORTHWEST
+
+            else:
+                return GOALPOST_SOUTHEAST
+
+    else:
+        # if we are facing SOUTH and see a purple goalpost
+        if fieldstate.goalpost_purple_is_seen:
+
+            # if we know that the purple goalpost should be on the west, it's the southwest
+            if fieldstate.our_west_goalpost == PURPLE:
+                return GOALPOST_SOUTHWEST
+
+            else:
+                return GOALPOST_SOUTHEAST
+
+        if fieldstate.goalpost_green_is_seen:
+            if fieldstate.our_west_goalpost == GREEN:
+                return GOALPOST_SOUTHWEST
+            else:
+                return GOALPOST_SOUTHEAST
+
+
+def try_to_update_robot_pos_from_goalposts(goalpost_green : Detection, goalpost_purple: Detection, fieldstate : FieldState) -> FieldState:
+    '''see if a green and/or purple goalpost is in range. Then, determine what known goalpost position those goalposts should be. Then update robot position'''
+
+    if goalpost_green.in_frame:
+        fieldstate.goalpost_green_is_seen = True
+        goalpost_detection = goalpost_green
+
+    elif goalpost_purple.in_frame:
+        fieldstate.goalpost_purple_is_seen = True
+        goalpost_detection = goalpost_purple
+    else:
+        # if neither are in frame there's nothing to do
+        return fieldstate
+
+    # if one of them is in frame, determine it's field position by referencing the robot's view and known field setting
+    goalpost_position = determine_goalpost_position(fieldstate)
+
+    # if the function was unable to determine the position, do not update
+    if goalpost_position is None:
+        return fieldstate
+
+    # update our robot's position
+    fieldstate.our_bot_pos_in = robot_pos_from_object(
+        object_bearing_rad= goalpost_detection.ang_from_bot_rad,
+        object_dis= goalpost_detection.dis_from_bot_in,
+        object_pos= goalpost_position,
+        robot_bearing_rad= fieldstate.our_bot_bearing_rad
+    )
+
+    return fieldstate
+
+
+def convert_detect_list_to_fieldstate(detect_list : list[Detection]) -> FieldState:
+    '''from the list of detected objects, update the fieldstate dataclass'''
+
+    fieldstate = FieldState()
+
+    detect_dict : dict = {}
+
+    # convert to a dictionary with name : detection key value pairs so we can update things in order
+    for detect in detect_list:
+        detect : Detection
+
+        detect_dict[detect.name] = detect
+
+    # now unpack them to be more easily worked with
+    goalpost_green : Detection = detect_dict[HAT_GREEN]
+    goalpost_purpl : Detection = detect_dict[HAT_FUCHSIA]
+    bot_yellow : Detection = detect_dict[HAT_YELLOW]
+    bot_blue : Detection = detect_dict[HAT_BLUE]
+    ball_red : Detection = detect_dict[BALL_RED]
+
+    # if we see a goalpost, try to update the robot position wrt the goalpost
+    if goalpost_green.in_frame or goalpost_purpl.in_frame:
+        fieldstate = try_to_update_robot_pos_from_goalposts(goalpost_purple=goalpost_purpl, goalpost_green=goalpost_green, fieldstate=fieldstate)
+
+    # add the ball
+    if ball_red.in_frame:
+        fieldstate.ball_pos_in = convert_to_field(
+            object_bearing_rad= ball_red.ang_from_bot_rad,
+            object_dis= ball_red.dis_from_bot_in,
+            robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+            robot_pos= fieldstate.our_bot_pos_in
+        )
+
+    # add our opponent bot
+    if bot_blue.in_frame:
+        fieldstate.their_bot_pos_in = convert_to_field(
+            object_bearing_rad= bot_blue.ang_from_bot_rad,
+            object_dis= bot_blue.dis_from_bot_in,
+            robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+            robot_pos= fieldstate.our_bot_pos_in
+        )
+
+    if bot_yellow.in_frame:
+        fieldstate.their_bot_pos_in = convert_to_field(
+            object_bearing_rad= bot_yellow.ang_from_bot_rad,
+            object_dis= bot_yellow.dis_from_bot_in,
+            robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+            robot_pos= fieldstate.our_bot_pos_in
+        )
+
+
+    return fieldstate

@@ -5,23 +5,37 @@ from tam_frame import get_field_frame, load_image_as_frame, show_frame, load_vid
 from tam_hsv import load_search_dict_from_csv
 from tam_vision import example_vision_full_stack, get_fieldstate_from_frame, get_annotated_frame, get_hsv_frame, get_list_detections
 from tam_draw import draw_fieldstate, draw_detection_list_to_camera_frame
+from tam_decide import convert_detect_list_to_fieldstate
 from tam_constants import BALL_RED, MIN_AREA_PX
+from tam_points import FIELD_CENTER
+from tam_colors import BLUE, YELLOW
 
 def main():
     # vid_path = "training_data/2026_11_02_T_15_35_52.mp4"
     # vision_and_decision_from_vid(vid_path)
 
     photo_path = "hsv_photos/goalposts_and_ball.png"
+    photo_path = "hsv_photos/hat_blue.png"
+    photo_path = "hsv_photos/hat_yellow.png"
 
     frame_camera = load_image_as_frame(photo_path)
+    frame_field = get_field_frame(left_is_green= True)
+
     search_dict = load_search_dict_from_csv()
     hsv_frame = get_hsv_frame(frame_camera)
 
     detect_list = get_list_detections(hsv_frame, search_dict)
 
-    frame_camera = draw_detection_list_to_camera_frame(frame_camera, detect_list)
+    fieldstate = convert_detect_list_to_fieldstate(detect_list)
 
-    show_frame(frame_camera)
+    frame_camera = draw_detection_list_to_camera_frame(frame_camera, detect_list)
+    frame_field = draw_fieldstate(frame_field, fieldstate)
+
+
+    side_by_side = concat_frames(frame_camera, frame_field)
+
+    show_frame(side_by_side)
+
 
 
 def vision_and_decision_from_photo(photo_path: str):

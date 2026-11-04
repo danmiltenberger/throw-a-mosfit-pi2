@@ -4,7 +4,9 @@ from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detec
 import math
 from tam_colors import *
 from tam_constants import *
-from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot
+from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot, convert_to_field, robot_pos_from_object
+from tam_decide import determine_goalpost_position
+from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER
 
 
 PIXELS_PER_INCH = 5
@@ -256,6 +258,22 @@ def draw_top_down_arrows(
     )
 
     return field_frame
+
+
+def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK)-> np.ndarray:
+
+    frame = cv2.arrowedLine(
+        img=frame,
+        pt1=get_point_int_tuple(start),
+        pt2=get_point_int_tuple(end),
+        color=color,
+        thickness=PIXELS_PER_INCH,
+        line_type=cv2.LINE_AA,
+        tipLength=0.08,
+    )
+
+    return frame
+
 
 
 def draw_notched_rectangle(
@@ -1017,13 +1035,16 @@ def draw_circle_to_frame(frame: np.ndarray, center: Point, radius: int, color: t
     return frame
 
 
-def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detection) -> np.ndarray:
+def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detection, draw_arrow: bool = True) -> np.ndarray:
     '''draw a circle around the detection in the camera frame if possible'''
+
+    
 
     if detection.in_frame == False:
         return camera_frame
 
-    camera_frame = draw_circle_to_frame(camera_frame, detection.camera_pos_px, radius= int(detection.width_px/2), color=color_dict[detection.name])
+    draw_color = color_dict[detection.name]
+    camera_frame = draw_circle_to_frame(camera_frame, detection.camera_pos_px, radius= int(detection.width_px/2), color=draw_color)
 
     lines = [
         str(detection.name),
@@ -1032,6 +1053,10 @@ def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detectio
     ]
 
     camera_frame = add_text_left_of_point(camera_frame, center_left= detection.camera_pos_px, lines=lines, left_offset= int((detection.width_px/2)*1.2) )
+
+    if draw_arrow:
+        camera_frame = draw_arrow_point_to_point(frame=camera_frame, start= CAMERA_CENTER_BOTTOM, end= detection.camera_pos_px, color=draw_color)
+
 
     return camera_frame
 
@@ -1046,22 +1071,35 @@ def draw_detection_list_to_camera_frame(camera_frame: np.ndarray, detect_list : 
     return camera_frame
 
 
+def clamp_to_field(given_point_in: Point, label: str = "") -> Point:
+    '''ensure that the point is on the field'''
 
-def draw_detection_list_to_field_frame(field_frame: np.ndarray, detect_list: list[Detection]) -> np.ndarray:
+    if given_point_in.x < 0:
+        print(f"{label} clamped left")
+        given_point_in.x = 0
+
+    if given_point_in.x > playing_field_in_x:
+        print(f"{label} clamped right")
+        given_point_in.x = playing_field_in_x
+
+    if given_point_in.y < 0:
+        print(f"{label} clamped bottom")
+        given_point_in.y = 0
+
+    if given_point_in.y > playing_field_in_y:
+        print(f"{label} clamped top")
+        given_point_in.y = playing_field_in_y
+
+    return given_point_in
 
 
-
-    return field_frame
-
-
-
-def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState) -> np.ndarray:
+def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState, draw_arrows: bool = True) -> np.ndarray:
 
     # draw our bot
     field_frame = draw_robot_to_field(
         field_frame= field_frame,
         bearing_rad= fieldstate.our_bot_bearing_rad,
-        pos_in= fieldstate.our_bot_pos_in,
+        pos_in= clamp_to_field(fieldstate.our_bot_pos_in, "bot_us"),
         color= fieldstate.our_team_color
     )
 
@@ -1077,18 +1115,33 @@ def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState) -> np.ndarr
 
         field_frame = draw_ball_to_field(
             field_frame= field_frame,
-            ball_pos_in= fieldstate.ball_pos_in,
+            ball_pos_in= clamp_to_field(fieldstate.ball_pos_in, "ball"),
             outline_color= outline_color
         )
+
+        if draw_arrows:
+            field_frame = draw_arrow_point_to_point(
+                frame=field_frame,
+                start= inches_to_screen(fieldstate.our_bot_pos_in),
+                end= inches_to_screen(fieldstate.ball_pos_in)
+            )
 
     # draw the opponent
     if fieldstate.their_bot_is_seen:
         field_frame = draw_robot_to_field(
             field_frame= field_frame,
             bearing_rad= fieldstate.their_bot_bearing_rad,
-            pos_in= fieldstate.their_bot_pos_in,
+            pos_in= clamp_to_field(fieldstate.their_bot_pos_in, "bot_them"),
             color= fieldstate.their_team_color
         )
+
+        if draw_arrows:
+            field_frame = draw_arrow_point_to_point(
+                frame=field_frame,
+                start= inches_to_screen(fieldstate.our_bot_pos_in),
+                end= inches_to_screen(fieldstate.their_bot_pos_in)
+            )
+
 
     
     return field_frame

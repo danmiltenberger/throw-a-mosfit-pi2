@@ -1,4 +1,13 @@
 from tam_classes import Point, Line
+from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
+
+
+# working with the camera
+CAMERA_CENTER_X = int(CAMERA_CAPTURE_X/2)
+CAMERA_CENTER_Y = int(CAMERA_CAPTURE_Y/2)
+
+CAMERA_CENTER_BOTTOM = Point(CAMERA_CENTER_X, CAMERA_CAPTURE_Y)
+CAMERA_CENTER = Point(CAMERA_CENTER_X, CAMERA_CENTER_Y)
 
 
 ### Defining the field, everything in inches

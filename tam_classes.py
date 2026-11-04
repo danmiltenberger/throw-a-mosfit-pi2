@@ -19,7 +19,7 @@ class Point:
     y: float = 0
 
     def __str__(self) -> str:
-        return f"({round(self.x)}, {round(self.y)})"
+        return f"({round(self.x)},{round(self.y)})"
 
 @dataclass
 class Line:
@@ -73,7 +73,7 @@ class FieldState:
     # defining the match
     our_team_color : tuple[int,int,int] = YELLOW
     their_team_color : tuple[int,int,int] = BLUE
-    our_left_goalpost : tuple[int,int,int] = PURPLE
+    our_west_goalpost : tuple[int,int,int] = PURPLE
 
     # defining our bot
     our_bot_pos_in: Point = field(default_factory=lambda: Point(0, 0))
@@ -93,10 +93,8 @@ class FieldState:
     # defining what we saw from the frame
     ball_is_seen : bool = False
     their_bot_is_seen : bool = False
-    goalpost_northwest_is_seen : bool = False
-    goalpost_northeast_is_seen : bool = False
-    goalpost_southwest_is_seen : bool = False
-    goalpost_southeast_is_seen : bool = False
+    goalpost_purple_is_seen : bool = False
+    goalpost_green_is_seen : bool = False
 
     # defining the 'capture zone' where if the ball is within this zone it is considered captured
     our_bot_capture_zone_dis_ahead_in : float = 10
@@ -132,7 +130,13 @@ class FieldState:
 
     def __str__(self) -> str:
 
-        return f"State(our_bot_pos: {self.our_bot_pos_in}, their_bot_pos: {self.their_bot_pos_in}, ball_pos: {self.ball_pos_in})"
+        line1 = f"State {round(self.timestep,2)}sec ["
+        line2 = f"Bot: {self.our_bot_pos_in}in, {round(math.degrees(self.our_bot_target_rad))}deg"
+        line3 = f"Ball: {self.ball_pos_in}, Them: {self.their_bot_pos_in}]"
+
+        return f"{line1}\n{line2}\n{line3}\n"
+
+        #return f"State(our_bot_pos: {self.our_bot_pos_in}, their_bot_pos: {self.their_bot_pos_in}, ball_pos: {self.ball_pos_in})"
     
 
 def get_capture_zone_point(state: FieldState) -> FieldState:
