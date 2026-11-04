@@ -15,27 +15,37 @@ from tam_colors import BLUE, YELLOW, GREEN, PURPLE, WHITE
 
 
 def main():
-    #vid_path = "training_data/2026_11_02_T_15_35_52.mp4"
-    # photo_path = "hsv_photos/hat_blue.png"
-    # photo_path = "hsv_photos/hat_yellow.png"
+    vid_path = "training_data/2026_11_02_T_15_36_33.mp4"
+    goalposts_video(vid_path)
 
 
-    #vision_and_decision_from_vid(vid_path)
-
-    photo_path = "hsv_photos/goalposts_and_ball.png"
-    frame_camera = load_image_as_frame(photo_path)
-
-    frame_camera_straightened = rotate_image(frame_camera, 3)
-
-    testing_goalposts_from_frame(frame_camera_straightened)
 
 
-def testing_goalposts_from_frame(frame_camera: np.ndarray):
+def goalposts_video(video_path: str, frames_per_sec = 10):
+    original_frame_field = get_field_frame(left_is_green=True)
+    search_dict = load_search_dict_from_csv()
+
+    sec_per_frame = 1/frames_per_sec
+
+    list_frames_camera = load_video_as_list_of_frames(video_path)
+
+    prev_state = get_init_fieldstate()
+
+    for frame in list_frames_camera:
+
+        side_by_side = testing_goalposts_from_frame(frame, original_frame_field.copy(), search_dict)
+
+        cv2.imshow("Side by side", side_by_side)
+
+        sleep(sec_per_frame)
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+
+def testing_goalposts_from_frame(frame_camera: np.ndarray, frame_field: np.ndarray, search_dict: dict) -> np.ndarray:
     '''if given an image with both goalposts, can we figure out our bot's position?'''
 
-    # one time loading
-    frame_field = get_field_frame(left_is_green= True, USE_DRAWN_FIELD=False)
-    search_dict = load_search_dict_from_csv()
 
     # looking for goalpost
     hsv_frame = get_hsv_frame(frame_camera)
@@ -108,7 +118,7 @@ def testing_goalposts_from_frame(frame_camera: np.ndarray):
 
     side_by_side = concat_frames(frame_camera, frame_field)
 
-    show_frame(side_by_side)
+    return side_by_side
 
 
 def vision_and_decision_from_photo(photo_path: str):
