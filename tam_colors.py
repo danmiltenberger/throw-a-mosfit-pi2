@@ -1,4 +1,3 @@
-
 ### colors
 # OpenCV colors: (Blue, Green, Red)
 
@@ -42,3 +41,5 @@ LIGHT_PINK  = (193, 182, 255)
 DARK_RED    = (0, 0, 139)
 DARK_GREEN  = (0, 100, 0)
 DARK_BLUE   = (139, 0, 0)
+
+

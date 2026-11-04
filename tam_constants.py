@@ -1,5 +1,5 @@
 import numpy as np
-from tam_colors import *
+from tam_colors import YELLOW, BLUE, PURPLE
 
 # Camera Constants
 CAMERA_CAPTURE_X = 640
@@ -122,5 +122,3 @@ BEARING_NORTH_EAST : float = np.pi/4
 BEARING_NORTH_WEST : float = np.pi/2 + np.pi /4
 BEARING_SOUTH_EAST : float = - np.pi/4
 BEARING_SOUTH_WEST : float = -np.pi/2 - np.pi/4 
-
-

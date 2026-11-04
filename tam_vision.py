@@ -6,7 +6,7 @@ import numpy as np
 
 import cv2
 import numpy as np
-from tam_classes import FieldState, Point
+from tam_classes import FieldState, Point, Detection
 from tam_constants import (
     BALL_RED,
     HSV_HI,
@@ -22,7 +22,8 @@ from tam_constants import (
     HAT_YELLOW,
     OBJECT_NAME,
     HAT_FUCHSIA,
-    HAT_GREEN
+    HAT_GREEN,
+    MIN_AREA_PX
 )
 from tam_points import FIELD_GOALBOX_CENTER_BOTTOM
 from tam_colors import YELLOW, BLUE, RED, BLACK, PURPLE, GREEN
@@ -301,6 +302,88 @@ def get_annotated_frame(frame: np.ndarray, search_dict: dict) -> np.ndarray:
 
     return annotated_frame
 
+
+def get_detection_from_name(obj_name: str, hsv_frame: np.ndarray, search_dict: dict) -> Detection:
+    
+    # load values to create the mask etc
+    hsv_lo = search_dict[obj_name][HSV_LO]
+    hsv_hi = search_dict[obj_name][HSV_HI]
+    known_width_in = search_dict[obj_name][KNOWN_WIDTH]
+    min_area_px = int(search_dict[obj_name][MIN_AREA_PX])
+
+    # create the thing to be returned
+    detection = Detection()
+    detection.name = obj_name
+    detection.in_frame = False
+
+    mask_frame = get_mask_frame(hsv_frame=hsv_frame, hsv_hi=hsv_hi, hsv_lo=hsv_lo)
+    contours = get_contours(mask_frame)
+
+    if contours is None:
+        raise TypeError("contours must not be None")
+
+    if not isinstance(contours, (list, tuple, np.ndarray)):
+        raise TypeError(
+            f"contours must be a list, tuple, or ndarray, "
+            f"got {type(contours).__name__}"
+        )
+
+    # if no contours, it isn't in frame
+    if len(contours) == 0:
+        detection.in_frame = False
+        return detection
+
+    # look for the largest contour in the frame
+    largest_area_px : float = 0
+    largest_contour  = contours[0]
+
+    for contour in contours:
+        if not isinstance(contour, np.ndarray):
+            raise TypeError("each contour must be a numpy.ndarray")
+
+        if contour.ndim != 3 or contour.shape[1] != 1 or contour.shape[2] != 2:
+            raise ValueError(
+                "each contour must have shape (N, 1, 2), " f"got {contour.shape}"
+            )
+
+        area = cv2.contourArea(contour)
+
+        if area >= largest_area_px:
+            largest_area_px = area
+            largest_contour = contour
+
+    # if it's smaller than the min area, discard
+    if largest_area_px < min_area_px:
+        detection.in_frame = False
+        return detection
+
+    # else analyze as a circle
+    center, radius = cv2.minEnclosingCircle(largest_contour)
+
+    detection.in_frame = True
+    detection.camera_pos_px = Point(center[0], center[1])
+    detection.width_px = int(radius * 2)
+    detection.area_px = int(np.pi * radius * radius)
+
+    # convert to distance and angle
+    detection.ang_from_bot_rad = calc_angle_from_screen_center(detection.camera_pos_px)
+    detection.dis_from_bot_in = calc_distance_from_bot(known_width_in=known_width_in, percieved_width_px= detection.width_px)
+
+    return detection
+
+
+def get_list_detections(hsv_frame: np.ndarray, search_dict: dict) -> list[Detection]:
+    '''search through the frame and return a list of a specific dataclass called a Detection'''
+    detect_list = []
+
+    search_list = [BALL_RED, HAT_BLUE, HAT_YELLOW, HAT_FUCHSIA, HAT_GREEN]
+
+    for name in search_list:
+
+        detection = get_detection_from_name(name, hsv_frame, search_dict)
+        detect_list.append(detection)
+
+    return detect_list
 
 def example_vision_full_stack(
     frame_camera: np.ndarray, frame_field: np.ndarray, search_dict: dict

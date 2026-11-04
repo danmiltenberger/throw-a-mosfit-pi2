@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState
+from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict
 import math
 from tam_colors import *
 from tam_constants import *
@@ -901,8 +901,6 @@ def add_text_left_of_point(
     return frame
 
 
-
-
 def draw_object_to_frame(
     frame: np.ndarray,
     object_dict: dict,
@@ -1004,7 +1002,56 @@ def draw_object_to_frame(
     return frame
 
 
+def draw_circle_to_frame(frame: np.ndarray, center: Point, radius: int, color: tuple[int,int,int]=WHITE) -> np.ndarray:
 
+    centerpoint = (int(center.x), int(center.y))
+
+    frame = cv2.circle(
+        img= frame,
+        radius= radius,
+        center= centerpoint,
+        color= color,
+        thickness= PIXELS_PER_INCH
+    )
+
+    return frame
+
+
+def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detection) -> np.ndarray:
+    '''draw a circle around the detection in the camera frame if possible'''
+
+    if detection.in_frame == False:
+        return camera_frame
+
+    camera_frame = draw_circle_to_frame(camera_frame, detection.camera_pos_px, radius= int(detection.width_px/2), color=color_dict[detection.name])
+
+    lines = [
+        str(detection.name),
+        f"{round(detection.dis_from_bot_in)} in",
+        f"{round(detection.area_px)} px area"
+    ]
+
+    camera_frame = add_text_left_of_point(camera_frame, center_left= detection.camera_pos_px, lines=lines, left_offset= int((detection.width_px/2)*1.2) )
+
+    return camera_frame
+
+
+def draw_detection_list_to_camera_frame(camera_frame: np.ndarray, detect_list : list[Detection]) -> np.ndarray:
+
+    for detection in detect_list:
+        detection : Detection
+
+        camera_frame = draw_detection_to_camera_frame(camera_frame, detection)
+
+    return camera_frame
+
+
+
+def draw_detection_list_to_field_frame(field_frame: np.ndarray, detect_list: list[Detection]) -> np.ndarray:
+
+
+
+    return field_frame
 
 
 

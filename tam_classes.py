@@ -1,6 +1,16 @@
 from dataclasses import dataclass, field
 from tam_constants import *
+from tam_colors import RED, GREEN, FUCHSIA
 import math
+
+
+color_dict = {
+    BALL_RED : RED,
+    HAT_BLUE : BLUE,
+    HAT_FUCHSIA : FUCHSIA,
+    HAT_GREEN : GREEN,
+    HAT_YELLOW : YELLOW
+}
 
 
 @dataclass
@@ -33,25 +43,23 @@ class Rectangle:
     # center: Point = Point(top_left.x + width / 2, top_left.y + height / 2)
 
 
+
 @dataclass
-class DetectedObject:
-    width_px: int = 0
-    area_px: int = 0
-    center_pos_on_screen_px: Point = field(default_factory=lambda: Point(0, 0))
+class Detection:
+    name: str = "NO_NAME"
+    in_frame: bool = False
+    camera_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    width_px : int = 0
+    area_px : int = 0
 
-    distance_from_bot: float = 0
-    bearing_rad: float = 0
-
-    pos_wrt_bot: Point = field(default_factory=lambda: Point(0, 0))
-
-    def get_pos_wrt_bot(self):
-        self.pos_wrt_bot.x = self.distance_from_bot * math.cos(self.bearing_rad)
-        self.pos_wrt_bot.y = self.distance_from_bot * math.sin(self.bearing_rad)
-        return
+    dis_from_bot_in : float = 0
+    ang_from_bot_rad : float = 0
 
     def __str__(self) -> str:
-        return f"obj(width_px: {self.width_px}, area_px: {self.area_px}, screen_center_px: {self.center_pos_on_screen_px})"
-        pass
+        return f"{self.name}\t{round(self.dis_from_bot_in,1)}in\t{round(math.degrees(self.ang_from_bot_rad))}deg"
+
+
+
 
 
 @dataclass
