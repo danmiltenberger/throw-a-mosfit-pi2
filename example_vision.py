@@ -19,9 +19,13 @@ def main():
     goalposts_video(vid_path)
 
 
+    
 
 
-def goalposts_video(video_path: str, frames_per_sec = 10):
+
+
+
+def goalposts_video(video_path: str, frames_per_sec = 1):
     original_frame_field = get_field_frame(left_is_green=True)
     search_dict = load_search_dict_from_csv()
 

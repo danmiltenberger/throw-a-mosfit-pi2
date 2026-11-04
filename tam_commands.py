@@ -1,4 +1,6 @@
 # movement constants
+from tam_classes import BotCommand
+
 BOT_ACTION = "BOT_ACTION"
 BOT_ACTION_DURATION_SEC = "BOT_ACTION_DURATION_SEC"
 
@@ -11,3 +13,10 @@ BOT_STRAFE_RIGHT = "D"
 ARM_OUT = "B"           # TODO handle all the interesting defend code later
 ARM_IN = "I"       # max of 2 sec
 BOT_KICK = "K"
+
+botcom = BotCommand(
+    com_str= BOT_FORWARD,
+    dur_sec= 5
+)
+
+example_command_string = "W1, Q2.5, K"
