@@ -14,6 +14,37 @@ NEW_MATCH = "NEW_MATCH"
 PENALTY_KICK = "PENALTY_KICK"
 START_GAME = "START_GAME"
 
+### button pins
+START_MATCH_PIN = 26
+START_KICK_PIN = 19
+CHANGE_TEAM_PIN = 13
+CHANGE_GOAL_PIN = 6
+END_GAME_PIN = 5
+
+
+# dictionary keys
+OUR_TEAM_COLOR = "OUR_TEAM_COLOR"
+OUR_LEFT_GOAL = "OUR_LEFT_GOAL"
+HEADER_ROW = "HEADER_ROW"
+BUTTON_STATUS = "BUTTON_STATUS"
+
+# dict vals
+GOAL_GREEN = "GRE"
+GOAL_PURPLE = "PUR"
+TEAM_YELLOW = "YEL"
+TEAM_BLUE = "BLU"
+
+HEADER_WAITING = "Change settings or start"
+
+status_str = "not read"
+
+match_settings = {
+    OUR_LEFT_GOAL : GOAL_GREEN,
+    OUR_TEAM_COLOR : TEAM_YELLOW,
+    HEADER_ROW : HEADER_WAITING,
+    BUTTON_STATUS : status_str,
+}
+
 # Folder Constants
 TRAINING_DATA = "training_data"
 FIELD_STATES = "field_states"

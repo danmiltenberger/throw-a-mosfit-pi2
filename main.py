@@ -4,24 +4,25 @@ from picamera2 import Picamera2 #type: ignore
 from run_penalty_kick import penalty
 from run_match import one_v_one_match
 from tam_lcd import write_lcd_lines
-from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
-from tam_buttons import (
-    start_match,
-    start_kick,
-    status_str,
-    change_team,
-    change_goal,
+from tam_constants import (
+    CAMERA_CAPTURE_X, 
+    CAMERA_CAPTURE_Y,
+    START_KICK_PIN,
+    START_MATCH_PIN,
+    CHANGE_GOAL_PIN,
+    CHANGE_TEAM_PIN,
+    END_GAME_PIN,
     match_settings,
     BUTTON_STATUS,
-    end,
     OUR_LEFT_GOAL,
-    OUR_TEAM_COLOR,
     GOAL_GREEN,
     GOAL_PURPLE,
+    OUR_TEAM_COLOR,
     TEAM_BLUE,
     TEAM_YELLOW,
-    HEADER_ROW,
-    HEADER_WAITING,
+    
+)
+from tam_buttons import (
     get_button_status_str,
     get_button_status,
     get_lcd_rows_match_settings
@@ -32,11 +33,11 @@ def menu():
 
     print("setting up pins")
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(start_match, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(start_kick, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(change_team, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(change_goal, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(end, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(START_MATCH_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(START_KICK_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(CHANGE_TEAM_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(CHANGE_GOAL_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(END_GAME_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 
     # Create once at program startup
@@ -60,7 +61,7 @@ def menu():
 
             match_settings[BUTTON_STATUS] = get_button_status_str(button_status)
 
-            if button_status[change_goal]:
+            if button_status[CHANGE_GOAL_PIN]:
 
                 # if our left was purple, it's now green
                 if our_left_is_purple:
@@ -73,17 +74,17 @@ def menu():
                 # either way, the state has swapped
                 our_left_is_purple = not our_left_is_purple
 
-            if button_status[change_team]:
+            if button_status[CHANGE_TEAM_PIN]:
                 if our_team_is_blue:
                     match_settings[OUR_TEAM_COLOR] = TEAM_YELLOW
                 else:
                     match_settings[OUR_TEAM_COLOR] = TEAM_BLUE
                 our_team_is_blue = not our_team_is_blue
 
-            if button_status[start_kick]:
+            if button_status[START_KICK_PIN]:
                 penalty(match_settings, picam2)
 
-            if button_status[start_match]:
+            if button_status[START_MATCH_PIN]:
                 one_v_one_match(match_settings, picam2)
 
             list_settings = get_lcd_rows_match_settings(match_settings)

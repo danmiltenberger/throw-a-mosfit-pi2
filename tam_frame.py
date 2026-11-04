@@ -83,7 +83,8 @@ def get_dashboard(
     return dashboard_frame
 
 
-def get_field_frame(USE_DRAWN_FIELD : bool = True) -> np.ndarray:
+def get_field_frame(USE_DRAWN_FIELD : bool = True, left_is_green = False, bottom_is_blue = False,) -> np.ndarray:
+    '''status quo is yellow on bottom and purple on left'''
 
     if USE_DRAWN_FIELD:
         frame = load_image_as_frame("field_pngs/field_empty.png")
@@ -92,7 +93,15 @@ def get_field_frame(USE_DRAWN_FIELD : bool = True) -> np.ndarray:
         frame = load_image_as_frame("field_pngs/field_black.png")
         style = "black"
 
-    
+
+    if bottom_is_blue:
+        # Mirror vertically (upside down)
+        frame = cv2.flip(frame, 0)
+
+
+    if left_is_green:
+        # Mirror horizontally (left goes to the right)
+        frame = cv2.flip(frame, 1)
 
     print(f"loaded empty field frame {style}")
     return frame

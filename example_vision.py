@@ -18,7 +18,7 @@ def main():
 
 
 def vision_and_decision_from_photo(photo_path: str):
-    frame_field = get_field_frame()
+    frame_field = get_field_frame(left_is_green= True)
     search_dict = load_search_dict_from_csv()
 
     frame_camera = load_image_as_frame(photo_path)
