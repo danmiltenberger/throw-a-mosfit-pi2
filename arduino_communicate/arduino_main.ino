@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <Wire.h>
+#include <ezButton.h>
 
 
 
@@ -23,6 +24,7 @@
 #define pinIRa_1 A14
 #define pinIRd_2 53
 #define pinIRa_2 A15
+
 
 double track_color_white = 0.00;
 double track_color_gray = 0.50;
@@ -39,24 +41,33 @@ volatile byte Sensor_Status = 0;
 
 
 //  PADDLE MOTOR CONFIGURATION ___________________________________________
-
+// left
 #define stp_1 2
 #define dir_1 3
 #define MS1_1 4
 #define MS2_1 5
 #define EN_1  6
 
+// right
 #define stp_2 42
 #define dir_2 43
 #define MS1_2 44
 #define MS2_2 45
 #define EN_2  46
 
+ezButton limitSwitch(50);
 
 char user_input;
 int x;
 int y;
 int state;
+int limiter_state;
+int iter;
+int i_crit;
+
+int full_rot_360 = 198;
+int defend_135 = 74;
+int shooting_rot_90 = 49;
 
 
 //  MOTOR CONFIGURATION ___________________________________________
@@ -119,11 +130,7 @@ volatile byte rightPayload_sensor = 0;
 
 
 // TEST 
-// String message = "WHE|--Y|100\n"; // <WHE|++X|###>
-// String message = "HAT_CYAN\n";
-// int angle = 30; // ERROR: Degrees bewteen 0-90 output worng amount 
-// int power = 1;
-// MOT_CWO_100
+
 
 
 
@@ -142,7 +149,7 @@ void setup() {
 
 
 
-  // PADDLE MOTOR SETUP
+  // PADDLE STEPPER MOTOR SETUP
 
 
   pinMode(stp_1, OUTPUT);
@@ -157,6 +164,8 @@ void setup() {
   pinMode(MS2_2, OUTPUT);
   pinMode(EN_2 OUTPUT);
   resetEDPins(); //Set step, direction, microstep and enable pins to default states
+
+  limitSwitch.setDebounceTime(50);
   
 
   // SENSOR SETUP
@@ -208,101 +217,53 @@ void read_py (String command) {
     String operation = command.substring(0,1);
     int duration = command.substring(1,4).toInt()
   
-    '''
-  String system = command.substring(0,3);
-  String direction = command.substring(4,7);
-  String power_str = command.substring(8,11);
-  int speed = power_str.toInt();
-  String additional_info = command.substring(12,15);
-  '''
 
     if (command == "SENSOR_STATUS") {
         respondToPi();
     }
 
-    if (operation == "W") {
+    else if (operation == "W") {
         wheel_go(duration);
     }
     
-    if (operation == "S") {
+    else if (operation == "S") {
         wheel_go_back(duration);
     }
 
-    if (operation == "Q") {
+    else if (operation == "Q") {
         rotate_left(duration);
     }
 
-    if (operation == "E") {
+    else if (operation == "E") {
         rotate_right(duration);
     }
 
-    if (operation == "A") {
+    else if (operation == "A") {
         wheel_go_left(duration);
     }
 
-    if (operation == "D") {
+    else if (operation == "D") {
         wheel_go_right(duration);
     }
 
-    if (operation == "B") {
+    else if (operation == "B") {
         arm_out_block(duration);
     }
 
-    if (operation == "I") {
-        arm_in(duration);
+    else if (operation == "I") {
+        bring_her_in();
     }
 
-    if (operation == "K") {
+    else if (operation == "K") {
         kick_it(duration);
     }
 
-    
-
-
-
-  if (system == "HAT"){
-    String color = command.substring(4); 
-    if (color == "CYAN"){
-      dance();
-    }
-  }
-
 }
 
-
-void respondToPi() {
-  if (Serial.available() > 0) {
-    String message = Serial.readStringUntil('\n');
-    message.trim();  // Remove trailing carriage return or whitespace.
-
-    if (message == "SENSOR_STATUS") {
-        Serial.print("arduino recieved: ");
-        Serial.println(message);
-        Serial.print("left sensor: ");
-        Serial.println(leftPayload_sensor);
-        Serial.print("right sensor: ");
-        Serial.println(rightPayload_sensor);
-        } else {
-        Serial.print("arduino recieved: ");
-        Serial.println(message);
-        }
-  }
-
-  '''
-
-    void setup() {
-    Serial.begin(9600);
-    Serial.setTimeout(1000);
-    }
-
-    void loop() {
-    respondToPi();
-    }
-  }
-    '''
-}
+// FUNCTIONS _______________________________________________________________________________
 
 
+// I2C COMMUNICATION _______________________________________________________________________________
 void receiveEvent(int howMany) {
   while (Wire.available()) {
     char c = Wire.read();
@@ -315,17 +276,8 @@ void receiveEvent(int howMany) {
   commandReady = true;
 }
 
-void requestEvent() {
-  byte dataBuffer[2];
-  dataBuffer[0] = leftPayload_sensor;
-  dataBuffer[1] = rightPayload_sensor;
-  
-  // Send the 2-byte series to the Pi
-  Wire.write(dataBuffer, 2); 
-}
 
-
-
+// EXTRA FUNCTIONS _______________________________________________________________________________
 void spin() {
   motor1.drive(100);
   motor2.drive(-100);
@@ -360,6 +312,8 @@ void dance(){
   Serial.println("DANCE");
 }
 
+
+// WHEEL FUNCTIONS _______________________________________________________________________________
 void degree_to_wheel_drive (int angle) {
    int power = 1
   // Front Wheel / Back Right
@@ -408,15 +362,6 @@ void degree_to_wheel_drive (int angle) {
   Serial.print(" ");
   Serial.print("Back Right:");
   Serial.println(power*backRight);
-}
-
-int check_sensor_reading (int pinIRa) {
-
-  int IRvalueA = analogRead(pinIRa); // Sensor Left
-
-  int color = closest_color(IRvalueA);
-
-  return color;
 }
 
 void wheel_right_adjust () {
@@ -473,23 +418,104 @@ void rotate_left (int duration) {
     Serial.println("rotating left");    // DOES THIS PRINT ON SCREEN
 }
 
-void arm_out_block (int duration) {
-    // TODO 
+
+
+// ARM FUNCTIONS _______________________________________________________________________________
+void resetEDPins(){
+  digitalWrite(stp, LOW);
+  digitalWrite(dir, LOW);
+  digitalWrite(MS1, LOW);
+  digitalWrite(MS2, LOW);
+  digitalWrite(EN, HIGH);
+}
+
+void defend(){
+  Serial.println("Arms Extending, ready to defend");
+  digitalWrite(dir, LOW); //Pull direction pin low to move "forward"
+  for(x= 0; x<defend_135; x++)  //Loop the forward stepping enough times for motion to be visible
+  {
+    digitalWrite(stp,HIGH); //Trigger one step forward
+    delay(1);
+    digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+    delay(1);
+  }
+
+}
+
+void kick_it (){
+  Serial.println("SHOOTING");
+  digitalWrite(dir, LOW); 
+  for(x= 0; x<shooting_rot_90; x++)  {
+    digitalWrite(stp,HIGH); //Trigger one step forward
+    delay(1);
+    digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+    delay(1);
+  }
+
+  delay(1000); 
+
+  digitalWrite(dir, HIGH); 
+  limiter_state = detect_limiter();
+  i_crit = shooting_rot_90;
+  while (limiter_state == HIGH && iter <= i_crit){
+    digitalWrite(stp,HIGH); //Trigger one step forward
+    delay(1);
+    digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
+    delay(1);
+    limiter_state = detect_limiter();
+  }
+
+}
+
+void bring_her_in(){
+  Serial.println("Reeling her back");
+  digitalWrite(dir_1, HIGH);
+  digitalWrite(dir_2, LOW);  // ADD THE OTHER MOTOR (RIGHT)
+  limiter_state = detect_limiter();
+  i_crit = 200;
+
+  while (limiter_state == HIGH && iter <= i_crit){
+    digitalWrite(stp,HIGH); 
+    delay(1);
+    digitalWrite(stp,LOW); 
+    delay(1);
+    limiter_state = detect_limiter();
+  }
+}
+
+int detect_limiter(){
+  limitSwitch.loop(); 
+
+  if(limitSwitch.isPressed()){
+    Serial.println("The limit switch: UNTOUCHED -> TOUCHED");
+  }
+
+  if(limitSwitch.isReleased()){
+    Serial.println("The limit switch: TOUCHED -> UNTOUCHED");
+  }
+
+  int state = limitSwitch.getState();
+  if(state == HIGH){
+    Serial.println("The limit switch: UNTOUCHED");
+  }
+  else{
+    Serial.println("The limit switch: TOUCHED");
+  }
+  return state;
+}
+
+void arm_out_block () {
     ''' arms out to a 180 degree angle and holds for durations. used to block the ball from going into the goal. '''
+
+    defend(); 
+    delay(2000);
+    bring_her_in();
 
     
 }
 
-void arm_in (int duration) {
-    // TODO 
-    ''' Arms pull back to proabably -45? must follow arm_block_out '''
-}
 
-void kick_it (int duration) {
-    // TODO 
-    '''quick out to 45 degress then back. More force/speed? '''
-}
-
+//  SENSOR READING _______________________________________________________________________________
 int closest_color (int A_read){
   int color;
   if (A_read > 900) {
@@ -509,4 +535,54 @@ int closest_color (int A_read){
 
   return color;
 
+}
+
+int check_sensor_reading (int pinIRa) {
+
+  int IRvalueA = analogRead(pinIRa); // Sensor Left
+
+  int color = closest_color(IRvalueA);
+
+  return color;
+}
+
+void requestEvent() {
+  byte dataBuffer[2];
+  dataBuffer[0] = leftPayload_sensor;
+  dataBuffer[1] = rightPayload_sensor;
+  
+  // Send the 2-byte series to the Pi
+  Wire.write(dataBuffer, 2); 
+}
+
+void respondToPi() {
+  if (Serial.available() > 0) {
+    String message = Serial.readStringUntil('\n');
+    message.trim();  // Remove trailing carriage return or whitespace.
+
+    if (message == "SENSOR_STATUS") {
+        Serial.print("arduino recieved: ");
+        Serial.println(message);
+        Serial.print("left sensor: ");
+        Serial.println(leftPayload_sensor);
+        Serial.print("right sensor: ");
+        Serial.println(rightPayload_sensor);
+        } else {
+        Serial.print("arduino recieved: ");
+        Serial.println(message);
+        }
+  }
+
+  '''
+
+    void setup() {
+    Serial.begin(9600);
+    Serial.setTimeout(1000);
+    }
+
+    void loop() {
+    respondToPi();
+    }
+  }
+    '''
 }

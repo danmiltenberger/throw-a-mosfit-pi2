@@ -16,9 +16,9 @@ BOT_ROTATE_LEFT = "Q"
 BOT_ROTATE_RIGHT = "E"
 BOT_STRAFE_LEFT = "A"
 BOT_STRAFE_RIGHT = "D"
-ARM_OUT = "B"           # TODO handle all the interesting defend code later
-ARM_IN = "I"       # max of 2 sec
-BOT_KICK = "K"
+ARM_OUT = "B"           # no duration, defends for 2 secs then returns          TODO handle all the interesting defend code later,   THIS COULD CAUSE ISSUES IF WE TRY TO TELL IT SOMETHING ELSE
+ARM_IN = "I"       # no duration, just a command to bring the arm back in
+BOT_KICK = "K"  # no duration, just a command to kick
 
 
 
