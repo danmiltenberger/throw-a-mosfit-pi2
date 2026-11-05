@@ -29,3 +29,7 @@ def show_two_cam(left_cam: Picamera2, right_cam: Picamera2):
 
 
     pass
+
+
+if __name__ == "__main__":
+    run_2cam()
