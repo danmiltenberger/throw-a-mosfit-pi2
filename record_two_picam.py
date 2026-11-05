@@ -100,13 +100,12 @@ def record_two_picams(
 
 if __name__ == "__main__":
     left_file, right_file = record_two_picams(
-        duration_s=10,
+        duration_s=60,
         resolution=(1280, 720),
         fps=30,
         left_camera_id=0,
         right_camera_id=1,
-        output_dir="recordings",
-        preview=False,
+        preview=True,
     )
 
     print(f"Saved: {left_file}")
