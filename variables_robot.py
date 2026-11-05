@@ -19,6 +19,7 @@ BOT_STRAFE_RIGHT = "D"
 ARM_OUT = "B"           # no duration, defends for 2 secs then returns          TODO handle all the interesting defend code later,   THIS COULD CAUSE ISSUES IF WE TRY TO TELL IT SOMETHING ELSE
 ARM_IN = "I"       # no duration, just a command to bring the arm back in
 BOT_KICK = "K"  # no duration, just a command to kick
+SENSOR_STATUS = "P"  # no duration, just a command to get the sensor status
 
 
 

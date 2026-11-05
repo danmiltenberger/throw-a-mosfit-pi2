@@ -3,7 +3,14 @@
 // TODO
 // test stepper motor
 // test  request event arduino to pi
-// write arm code 
+
+// ISSUES
+/*
+
+degree to wheel drive 
+
+*/
+
 
 
 
@@ -15,10 +22,7 @@
 #include <Wire.h>
 #include <ezButton.h>
 
-
-
-
-// SENSOR CONFIGURATION
+// SENSOR CONFIGURATION ___________________________________________
 
 #define pinIRd_1 52
 #define pinIRa_1 A14
@@ -32,6 +36,9 @@ double track_color_black = 1.00;
 
 int sensor_left;
 int sensor_right;
+
+int left_color;
+int right_color;
 
 volatile byte Sensor_Status = 0; 
 // 00: all is well, both sensors see black
@@ -60,7 +67,6 @@ ezButton limitSwitch(50);
 char user_input;
 int x;
 int y;
-int state;
 int limiter_state;
 int iter;
 int i_crit;
@@ -110,7 +116,7 @@ Motor motorRB = Motor(BIN1_B, BIN2_B, PWMB_B, offset_RB, STBY_B);
 //int angle = 30; // ERROR: Degrees bewteen 0-90 output worng amount 
 //int power = 1;
 
-const int MOTOR_SPEED = 150; // Speed is constant whenever the robot is turning (0-255)
+const int motor_speed = 255; // we can only run full speed, unless we switch (22, 28) solution? (44–46 are free if we move stepper 2’s MS1/MS2/EN to plain digital pins) ie 
 
 
 //  PI SETTINGS ___________________________________________
@@ -162,7 +168,7 @@ void setup() {
   pinMode(dir_2, OUTPUT);
   pinMode(MS1_2, OUTPUT);
   pinMode(MS2_2, OUTPUT);
-  pinMode(EN_2 OUTPUT);
+  pinMode(EN_2, OUTPUT);
   resetEDPins(); //Set step, direction, microstep and enable pins to default states
 
   limitSwitch.setDebounceTime(50);
@@ -188,12 +194,13 @@ void setup() {
 void loop() {
 
   // Sensor reading: sends info to PI upon request: info sent is [100, 50] (ie: [left sees black, right sees gray])
-  left_color = check_sensor_reading (int pinIRa_1);
-  right_color = check_sensor_reading (int pinIRa_2);
+  left_color = check_sensor_reading (pinIRa_1);
+  right_color = check_sensor_reading (pinIRa_2);
   leftPayload_sensor = (byte)(left_color);
   rightPayload_sensor = (byte)(right_color);
 
   if (commandReady) {
+
     noInterrupts();
     String command = receivedCommand;
     receivedCommand = "";
@@ -213,16 +220,10 @@ void loop() {
 // FUNCTIONS _______________________________________________________________________________
 
 void read_py (String command) {
-  
     String operation = command.substring(0,1);
-    int duration = command.substring(1,4).toInt()
-  
+    int duration = command.substring(1,5).toInt();
 
-    if (command == "SENSOR_STATUS") {
-        respondToPi();
-    }
-
-    else if (operation == "W") {
+    if (operation == "W") {
         wheel_go(duration);
     }
     
@@ -247,7 +248,7 @@ void read_py (String command) {
     }
 
     else if (operation == "B") {
-        arm_out_block(duration);
+        arm_out_block();
     }
 
     else if (operation == "I") {
@@ -255,8 +256,24 @@ void read_py (String command) {
     }
 
     else if (operation == "K") {
-        kick_it(duration);
+      kick_it();
     }
+
+    else if (operation == "P") {
+      Serial.print("arduino recieved: ");
+      Serial.println(operation);
+      Serial.print("left sensor: ");
+      Serial.println(leftPayload_sensor);
+      Serial.print("right sensor: ");
+      Serial.println(rightPayload_sensor);
+    } 
+
+    else {
+      Serial.print("arduino recieved: ");
+      Serial.println(command);
+    }
+
+    resetEDPins();
 
 }
 
@@ -276,37 +293,48 @@ void receiveEvent(int howMany) {
   commandReady = true;
 }
 
+void requestEvent() {
+  byte dataBuffer[2];
+  dataBuffer[0] = leftPayload_sensor;
+  dataBuffer[1] = rightPayload_sensor;
+  
+  // Send the 2-byte series to the Pi
+  Wire.write(dataBuffer, 2); 
+}
+
 
 // EXTRA FUNCTIONS _______________________________________________________________________________
 void spin() {
-  motor1.drive(100);
-  motor2.drive(-100);
+  motorLF.drive(motor_speed);
+  motorLB.drive(motor_speed);
+  motorRF.drive(-motor_speed);
+  motorRB.drive(-motor_speed);
 }
 
 void shake(){
-  left(motor1, motor2, 100);
+  left(motorLF, motorRF, motor_speed);
   delay(1000);
-  right(motor1, motor2, 100);
+  right(motorLF, motorRF, motor_speed);
   delay(1000);
 }
 
 void dance(){
   for (int i = 0; i < 4; i++ ){
-    forward(motor1, motor2, 150);
+    forward(motorLF, motorRF, motor_speed);
     delay(1000);
-    back(motor1, motor2, 150);
+    back(motorLF, motorRF, motor_speed);
     delay(1000);
   }
-  left(motor1, motor2, 100);
+  left(motorLF, motorRF, motor_speed);
   delay(1000);
 
   for (int i = 0; i < 4; i++ ){
-    forward(motor1, motor2, 150);
+    forward(motorLF, motorRF, motor_speed);
     delay(1000);
-    back(motor1, motor2, 150);
+    back(motorLF, motorRF, motor_speed);
     delay(1000);
   }
-  right(motor1, motor2, 100);
+  right(motorLF, motorRF, motor_speed);
   delay(1000);
   
   Serial.println("DANCE");
@@ -314,8 +342,8 @@ void dance(){
 
 
 // WHEEL FUNCTIONS _______________________________________________________________________________
-void degree_to_wheel_drive (int angle) {
-   int power = 1
+void degree_to_wheel_drive (int angle) { // riddled with errors
+   int power = 1;
   // Front Wheel / Back Right
   if (angle <= 90) {
     frontLeft = 100;
@@ -364,128 +392,96 @@ void degree_to_wheel_drive (int angle) {
   Serial.println(power*backRight);
 }
 
-void wheel_right_adjust () {
-  right(motor1, motor2, 150);
-  delay(100);
-  Serial.println("adjusting left");
+void stop_dear_god_please_stop () {
+    brake(motorLF, motorRF); 
+    brake(motorLB, motorRB);
 }
 
 void wheel_go (int duration) {
-    int speed = 150;
-    forward(motorLF, motorRF, speed);
-    forward(motorLB, motorRB, speed);
-    delay(duration);
     Serial.println("dead ahead");    // DOES THIS PRINT ON SCREEN
+    forward(motorLF, motorRF, motor_speed);
+    forward(motorLB, motorRB, motor_speed);
+    drive_for(duration);
+
+
 }
 
 void wheel_go_back (int duration) {
-    int speed = 150;
-    back(motorLF, motorRF, speed);
-    back(motorLB, motorRB, speed);
-    delay(duration);
+    back(motorLF, motorRF, motor_speed);
+    back(motorLB, motorRB, motor_speed);
+    drive_for(duration);
     Serial.println("put it in reverse");    // DOES THIS PRINT ON SCREEN
+
 }
 
 void wheel_go_left (int duration) {
-    int speed = 150;
-    left(motorLF, motorRF, speed);
-    left(motorLB, motorRB, speed);
-    delay(duration);
+    motorLF.drive(-motor_speed);
+    motorRF.drive( motor_speed);
+    motorLB.drive( motor_speed);
+    motorRB.drive(-motor_speed);
+
+  /* CHANGE IF PWM pins are moved to 44-46
+    left(motorLF, motorRF, motor_speed);
+    right(motorLB, motorRB, motor_speed);
+  */
+    drive_for(duration);
     Serial.println("left");    // DOES THIS PRINT ON SCREEN
+
 }
 
 void wheel_go_right (int duration) {
-    int speed = 150;
-    right(motorLF, motorRF, speed);
-    right(motorLB, motorRB, speed);
-    delay(duration);
+    motorLF.drive( motor_speed);
+    motorRF.drive(-motor_speed);
+    motorLB.drive(-motor_speed);
+    motorRB.drive( motor_speed);
+
+    /* CHANGE IF PWM pins are moved to 44-46
+    right(motorLF, motorRF, motor_speed);
+    left(motorLB, motorRB, motor_speed);
+    */ 
+    drive_for(duration);
     Serial.println("right");    // DOES THIS PRINT ON SCREEN
+
 }
 
-void rotate_right (int duration) {
-    int speed = 150;
-    forward(motorLF, motorLB, speed);
-    back(motorRF, motorRB, speed);
+void rotate_right (int duration) { // will not stop when shite sensor reading
+    forward(motorLF, motorLB, motor_speed);
+    back(motorRF, motorRB, motor_speed);
     delay(duration);
     Serial.println("rotating right");    // DOES THIS PRINT ON SCREEN
+
+
 }
 
-void rotate_left (int duration) {
-    int speed = 150;
-    back(motorLF, motorLB, speed);
-    forward(motorRF, motorRB, speed);
+void rotate_left (int duration) { // will not stop when shite sensor reading
+    back(motorLF, motorLB, motor_speed);
+    forward(motorRF, motorRB, motor_speed);
     delay(duration);
     Serial.println("rotating left");    // DOES THIS PRINT ON SCREEN
+
 }
 
 
 
 // ARM FUNCTIONS _______________________________________________________________________________
 void resetEDPins(){
-  digitalWrite(stp, LOW);
-  digitalWrite(dir, LOW);
-  digitalWrite(MS1, LOW);
-  digitalWrite(MS2, LOW);
-  digitalWrite(EN, HIGH);
-}
+  digitalWrite(stp_1, LOW);
+  digitalWrite(dir_1, LOW);
+  digitalWrite(MS1_1, LOW);
+  digitalWrite(MS2_1, LOW);
+  digitalWrite(EN_1, HIGH);
 
-void defend(){
-  Serial.println("Arms Extending, ready to defend");
-  digitalWrite(dir, LOW); //Pull direction pin low to move "forward"
-  for(x= 0; x<defend_135; x++)  //Loop the forward stepping enough times for motion to be visible
-  {
-    digitalWrite(stp,HIGH); //Trigger one step forward
-    delay(1);
-    digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
-    delay(1);
-  }
-
-}
-
-void kick_it (){
-  Serial.println("SHOOTING");
-  digitalWrite(dir, LOW); 
-  for(x= 0; x<shooting_rot_90; x++)  {
-    digitalWrite(stp,HIGH); //Trigger one step forward
-    delay(1);
-    digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
-    delay(1);
-  }
-
-  delay(1000); 
-
-  digitalWrite(dir, HIGH); 
-  limiter_state = detect_limiter();
-  i_crit = shooting_rot_90;
-  while (limiter_state == HIGH && iter <= i_crit){
-    digitalWrite(stp,HIGH); //Trigger one step forward
-    delay(1);
-    digitalWrite(stp,LOW); //Pull step pin low so it can be triggered again
-    delay(1);
-    limiter_state = detect_limiter();
-  }
-
-}
-
-void bring_her_in(){
-  Serial.println("Reeling her back");
-  digitalWrite(dir_1, HIGH);
-  digitalWrite(dir_2, LOW);  // ADD THE OTHER MOTOR (RIGHT)
-  limiter_state = detect_limiter();
-  i_crit = 200;
-
-  while (limiter_state == HIGH && iter <= i_crit){
-    digitalWrite(stp,HIGH); 
-    delay(1);
-    digitalWrite(stp,LOW); 
-    delay(1);
-    limiter_state = detect_limiter();
-  }
+  digitalWrite(stp_2, LOW);
+  digitalWrite(dir_2, LOW);
+  digitalWrite(MS1_2, LOW);
+  digitalWrite(MS2_2, LOW);
+  digitalWrite(EN_2, HIGH);
 }
 
 int detect_limiter(){
   limitSwitch.loop(); 
 
+  /*
   if(limitSwitch.isPressed()){
     Serial.println("The limit switch: UNTOUCHED -> TOUCHED");
   }
@@ -494,18 +490,99 @@ int detect_limiter(){
     Serial.println("The limit switch: TOUCHED -> UNTOUCHED");
   }
 
-  int state = limitSwitch.getState();
   if(state == HIGH){
     Serial.println("The limit switch: UNTOUCHED");
   }
   else{
     Serial.println("The limit switch: TOUCHED");
   }
-  return state;
+  */
+  return limitSwitch.getState();
 }
 
+void defend(){
+  digitalWrite(EN_1, LOW);
+  digitalWrite(EN_2, LOW);
+
+  Serial.println("Arms Extending, ready to defend");
+  digitalWrite(dir_1, LOW); 
+  digitalWrite(dir_2, HIGH);
+
+  for(x= 0; x<defend_135; x++)  {
+    digitalWrite(stp_1,HIGH); //Trigger one step forward
+    digitalWrite(stp_2,HIGH);
+    delay(1);
+    digitalWrite(stp_1,LOW); //Pull step pin low so it can be triggered again
+    digitalWrite(stp_2,LOW);
+    delay(1);
+  }
+
+}
+
+void kick_it (){
+  digitalWrite(EN_1, LOW);
+  digitalWrite(EN_2, LOW);
+
+  Serial.println("SHOOTING");
+  digitalWrite(dir_1, LOW); 
+  digitalWrite(dir_2, HIGH);
+
+  for(x= 0; x<shooting_rot_90; x++)  {
+    digitalWrite(stp_1,HIGH); //Trigger one step forward
+    digitalWrite(stp_2,HIGH);
+    delay(1);
+    digitalWrite(stp_1,LOW); //Pull step pin low so it can be triggered again
+    digitalWrite(stp_2,LOW);
+    delay(1);
+  }
+
+  delay(1000); 
+
+  digitalWrite(dir_1, HIGH); 
+  digitalWrite(dir_2, LOW);
+  limiter_state = detect_limiter();
+  iter = 0;
+  i_crit = shooting_rot_90;
+
+  while (limiter_state == HIGH && iter <= i_crit){
+    digitalWrite(stp_1,HIGH); //Trigger one step forward
+    digitalWrite(stp_2,HIGH);
+    delay(1);
+    digitalWrite(stp_1,LOW); //Pull step pin low so it can be triggered again
+    digitalWrite(stp_2,LOW);
+    delay(1);
+    limiter_state = detect_limiter();
+    iter = iter + 1;
+  }
+
+}
+
+void bring_her_in(){
+  digitalWrite(EN_1, LOW);
+  digitalWrite(EN_2, LOW);
+
+  Serial.println("Reeling her back");
+  digitalWrite(dir_1, HIGH);
+  digitalWrite(dir_2, LOW);  // ADD THE OTHER MOTOR (RIGHT)
+  limiter_state = detect_limiter();
+  iter = 0;
+  i_crit = 200;
+
+  while (limiter_state == HIGH && iter <= i_crit){
+    digitalWrite(stp_1,HIGH); 
+    digitalWrite(stp_2,HIGH);
+    delay(1);
+    digitalWrite(stp_1,LOW); 
+    digitalWrite(stp_2,LOW);
+    delay(1);
+    limiter_state = detect_limiter();
+    iter = iter + 1;
+  }
+}
+
+
 void arm_out_block () {
-    ''' arms out to a 180 degree angle and holds for durations. used to block the ball from going into the goal. '''
+    // arms out to a 180 degree angle and holds for durations. used to block the ball from going into the goal. //
 
     defend(); 
     delay(2000);
@@ -546,43 +623,22 @@ int check_sensor_reading (int pinIRa) {
   return color;
 }
 
-void requestEvent() {
-  byte dataBuffer[2];
-  dataBuffer[0] = leftPayload_sensor;
-  dataBuffer[1] = rightPayload_sensor;
-  
-  // Send the 2-byte series to the Pi
-  Wire.write(dataBuffer, 2); 
-}
+void drive_for(int duration) {
+  bool startedOnWhite = (check_sensor_reading(pinIRa_1) == 0 || check_sensor_reading(pinIRa_2) == 0);
 
-void respondToPi() {
-  if (Serial.available() > 0) {
-    String message = Serial.readStringUntil('\n');
-    message.trim();  // Remove trailing carriage return or whitespace.
+  unsigned long start = millis();
+  while (millis() - start < duration) {
+    int l = check_sensor_reading(pinIRa_1);
+    int r = check_sensor_reading(pinIRa_2);
+    leftPayload_sensor = l;
+    rightPayload_sensor = r;
 
-    if (message == "SENSOR_STATUS") {
-        Serial.print("arduino recieved: ");
-        Serial.println(message);
-        Serial.print("left sensor: ");
-        Serial.println(leftPayload_sensor);
-        Serial.print("right sensor: ");
-        Serial.println(rightPayload_sensor);
-        } else {
-        Serial.print("arduino recieved: ");
-        Serial.println(message);
-        }
-  }
-
-  '''
-
-    void setup() {
-    Serial.begin(9600);
-    Serial.setTimeout(1000);
+    bool onWhite = (l == 0 || r == 0);
+    if (onWhite && !startedOnWhite) {
+      Serial.println("WHITE - stopping");
+      break;
     }
-
-    void loop() {
-    respondToPi();
-    }
+    if (!onWhite) startedOnWhite = false;   // left the line, re-arm the check
   }
-    '''
+  stop_dear_god_please_stop();
 }
