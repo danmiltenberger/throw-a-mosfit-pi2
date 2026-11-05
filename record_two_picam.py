@@ -71,9 +71,9 @@ def record_two_picams(
             left_frame = left_cam.capture_array("main")
             right_frame = right_cam.capture_array("main")
 
-            # Picamera2 RGB888 arrays are RGB; OpenCV VideoWriter expects BGR.
-            left_bgr = cv2.cvtColor(np.asarray(left_frame), cv2.COLOR_RGB2BGR)
-            right_bgr = cv2.cvtColor(np.asarray(right_frame), cv2.COLOR_RGB2BGR)
+            # Picamera2 "RGB888" already provides BGR-ordered data for OpenCV.
+            left_bgr = np.asarray(left_frame)
+            right_bgr = np.asarray(right_frame)
 
             left_writer.write(left_bgr)
             right_writer.write(right_bgr)
@@ -84,7 +84,6 @@ def record_two_picams(
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
-            # Keep approximately the requested frame rate.
             cv2.waitKey(int(frame_interval * 1000))
 
     finally:
