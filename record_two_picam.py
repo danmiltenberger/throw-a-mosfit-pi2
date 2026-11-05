@@ -29,7 +29,7 @@ def record_two_picams(
     timestamp = datetime.now().strftime("%Y_%-m_%-d_%-H_%M")
 
     left_path = os.path.join(
-        output_dir, f"{width}_{height}_LEFT_{timestamp}.mp4"
+        output_dir, f"{width}_{height}_LEFT__{timestamp}.mp4"
     )
     right_path = os.path.join(
         output_dir, f"{width}_{height}_RIGHT_{timestamp}.mp4"
