@@ -7,13 +7,13 @@ from picamera2 import Picamera2
 
 
 def record_two_picams(
-    duration_s: float = 10.0,
+    duration_s: float = 60.0,
     resolution: tuple[int, int] = (1280, 720),
     fps: int = 30,
     left_camera_id: int = 0,
     right_camera_id: int = 1,
     output_dir: str = "bino_vision",
-    preview: bool = False,
+    preview: bool = True,
 ) -> tuple[str, str]:
     """
     Record simultaneous video from two Picamera2 cameras using OpenCV.
