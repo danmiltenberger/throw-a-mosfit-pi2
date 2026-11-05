@@ -1,5 +1,5 @@
 from picamera2 import Picamera2 #type: ignore
-from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
+from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y, END_GAME_PIN
 
 import time
 import cv2
@@ -36,7 +36,7 @@ def one_v_one_match(match_settings: dict, picam2):
         # check if the program should quit
         button_status = get_button_status()
         match_settings[BUTTON_STATUS] = get_button_status_str(button_status)
-        if button_status[end]:
+        if button_status[END_GAME_PIN]:
 
             if save_frame_on_exit:
                 save_frame_as_png(frame_og)
