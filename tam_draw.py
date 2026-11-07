@@ -1,14 +1,14 @@
 import numpy as np
 import cv2
-from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict
+from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict, BotCommand
 import math
 from tam_colors import *
 from tam_constants import *
 from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot, convert_to_field, robot_pos_from_object
 from tam_decide import determine_goalpost_position
 from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER
-
-
+from tam_ourbot import in_per_sec_forward, in_per_sec_backward, in_per_sec_strafe, rad_per_sec_rotation
+from tam_commands import BOT_FORWARD, BOT_BACKWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT, BOT_KICK
 PIXELS_PER_INCH = 5
 
 def convert_to_px(inches: float) -> int:
@@ -275,18 +275,18 @@ def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color
     return frame
 
 
-
 def draw_notched_rectangle(
-    image : np.ndarray,
-    center_x : int,
-    top_y : int,
-    width : int,
-    height : int,
-    base_length : int,
-    angle_deg : int,
+    image: np.ndarray,
+    center_x: int,
+    top_y: int,
+    width: int,
+    height: int,
+    base_length: int,
+    angle_deg: int,
     color=(255, 255, 255),
     rotation_deg=0.0,
     border_thickness=1,
+    opacity: float = 1.0,
 ) -> np.ndarray:
     """
     Draw a filled, rotated rectangle with a V-notch and black border.
@@ -310,6 +310,9 @@ def draw_notched_rectangle(
         Positive = counterclockwise as viewed on the image.
     border_thickness : int
         Black border width in pixels; must be at least 1.
+    opacity : float
+        Opacity of both the fill and border, from 0 to 1.
+        0 = invisible; 1 = fully opaque.
 
     Returns
     -------
@@ -333,12 +336,17 @@ def draw_notched_rectangle(
         or border_thickness < 1
     ):
         raise ValueError("border_thickness must be a positive integer.")
+    if not np.isfinite(opacity) or not 0 <= opacity <= 1:
+        raise ValueError("opacity must be a finite number between 0 and 1.")
 
     notch_depth = (base_length / 2) / np.tan(
         np.deg2rad(angle_deg / 2)
     )
     if notch_depth >= height:
         raise ValueError("The notch must be shallower than the rectangle.")
+
+    if opacity == 0:
+        return image
 
     left = center_x - width / 2
     right = center_x + width / 2
@@ -366,8 +374,11 @@ def draw_notched_rectangle(
         rotated_vertices * (1 << shift)
     ).astype(np.int32)
 
+    # Draw directly when opaque; otherwise draw onto a copy.
+    overlay = image if opacity == 1 else image.copy()
+
     cv2.fillPoly(
-        image,
+        overlay,
         [points],
         color=color,
         lineType=cv2.LINE_AA,
@@ -377,7 +388,7 @@ def draw_notched_rectangle(
     black = 0 if image.ndim == 2 else (0,) * image.shape[2]
 
     cv2.polylines(
-        image,
+        overlay,
         [points],
         isClosed=True,
         color=black,
@@ -386,10 +397,25 @@ def draw_notched_rectangle(
         shift=shift,
     )
 
+    if opacity < 1:
+        cv2.addWeighted(
+            overlay,
+            float(opacity),
+            image,
+            1.0 - float(opacity),
+            0,
+            dst=image,
+        )
+
     return image
 
 
-def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point, bearing_rad: float, color: tuple[int,int,int]= BLACK) -> np.ndarray:
+def draw_robot_to_field(
+        field_frame: np.ndarray, 
+        pos_in: Point, 
+        bearing_rad: float, 
+        color: tuple[int,int,int]= BLACK,
+        opacity: float = 1) -> np.ndarray:
 
     pos_px = inches_to_screen(pos_in)
 
@@ -404,6 +430,7 @@ def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point, bearing_rad: flo
         color=color,
         rotation_deg=math.degrees(bearing_rad) -90,
         border_thickness=1,
+        opacity= opacity,
     )
 
     return field_frame
@@ -1145,3 +1172,35 @@ def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState, draw_arrows
 
     
     return field_frame
+
+
+def draw_proposed_command(frame_field: np.ndarray, fieldstate : FieldState, bot_command: BotCommand) -> np.ndarray:
+    '''draw the expected position and orientation (slightly translucent) of the robot after the given command'''
+
+    # values to be updated
+    new_bearing = fieldstate.our_bot_bearing_rad
+    new_pos_in = fieldstate.our_bot_pos_in
+
+    # match the command
+    if bot_command.com_str == BOT_FORWARD:
+        pass
+
+
+    # TODO
+
+
+
+
+    frame_field = draw_robot_to_field(
+        opacity= 0.6,
+        field_frame= frame_field,
+        bearing_rad= new_bearing,
+        pos_in= new_pos_in,
+        color= fieldstate.our_team_color
+    )
+
+    return frame_field
+
+
+
+
