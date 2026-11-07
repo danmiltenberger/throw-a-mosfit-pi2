@@ -11,9 +11,25 @@ from tam_colors import PURPLE, GREEN
 from tam_topdown import robot_pos_from_object, convert_to_field
 from tam_constants import HAT_BLUE, HAT_FUCHSIA, HAT_GREEN, HAT_YELLOW, BALL_RED, BEARING_NORTH, BEARING_SOUTH
 
+'''
+ MODES TO BE IN: 
+ SEARCH 
+ APPROACH_BALL
+ CARRY_BALL
+        if bot in line from us to goal and we have ball swerve
+SHOOT_BALL
+DEFEND
+    return home and block 
+
+
+
+'''
+
 
 
 def get_init_fieldstate(match_settings: dict = {}) -> FieldState:
+    '''Initialize the field state for the beginning of the match.'''
+
     fieldstate = FieldState()
 
     fieldstate.our_bot_pos_in = FIELD_GOALBOX_CENTER_BOTTOM
@@ -29,6 +45,7 @@ def get_init_fieldstate(match_settings: dict = {}) -> FieldState:
 
 def is_on_line(point_in_q: Point, line: Line) -> bool:
     # check if a given point lies on the line between points
+    # used for collision detection and etc 
 
     # equation of line: y = mx + b
     rise = line.pt2.y - line.pt1.y
@@ -82,13 +99,12 @@ def is_within_circ(point_in_q: Point, circle_center: Point, cicle_rad: float) ->
 
 def get_bot_command_straight_line(fieldstate: FieldState, end_pos: Point, dur_max_sec : float = 2) -> BotCommand:
     '''
-    return a command to rotate to point at the end position OR 
-    return a command to drive to that point'''
+    return a command to rotate to point at the end position OR return a command to drive to that point'''
 
     bot_command = BotCommand()
 
     delta_y = fieldstate.our_bot_pos_in.y - end_pos.y
-    delta_x = fieldstate.our_bot_pos_in.y - end_pos.y
+    delta_x = fieldstate.our_bot_pos_in.x - end_pos.x
   
     
     bot_command = get_turn_command(
