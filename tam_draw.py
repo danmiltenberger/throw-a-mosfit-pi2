@@ -275,6 +275,18 @@ def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color
     return frame
 
 
+def draw_line_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK) -> np.ndarray:
+    frame = cv2.line(
+        img= frame,
+        pt1= get_point_int_tuple(start),
+        pt2= get_point_int_tuple(end),
+        color= color,
+        thickness= PIXELS_PER_INCH
+    )
+
+    return frame
+
+
 
 def draw_notched_rectangle(
     image : np.ndarray,
@@ -1091,6 +1103,17 @@ def clamp_to_field(given_point_in: Point, label: str = "") -> Point:
         given_point_in.y = playing_field_in_y
 
     return given_point_in
+
+
+def draw_vertical_line_on_camera_frame(frame: np.ndarray, dis_from_left: int = 0) -> np.ndarray:
+    '''draw a vertical line on the camera frame at a specified distance in pixels from the left'''
+
+    point_top = Point(dis_from_left, 0)
+    point_bottom = Point(dis_from_left, CAMERA_CAPTURE_Y)
+
+    frame = draw_line_point_to_point(frame, point_top, point_bottom)
+
+    return frame
 
 
 def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState, draw_arrows: bool = True) -> np.ndarray:
