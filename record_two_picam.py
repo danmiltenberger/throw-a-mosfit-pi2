@@ -3,7 +3,7 @@ from datetime import datetime
 
 import cv2
 import numpy as np
-from picamera2 import Picamera2
+from picamera2 import Picamera2 #type: ignore
 
 
 def record_two_picams(
@@ -29,10 +29,10 @@ def record_two_picams(
     timestamp = datetime.now().strftime("%Y_%-m_%-d_%-H_%M")
 
     left_path = os.path.join(
-        output_dir, f"{width}_{height}_LEFT__{timestamp}.mp4"
+        output_dir, f"{width}_{height}_{timestamp}_LEFT.mp4"
     )
     right_path = os.path.join(
-        output_dir, f"{width}_{height}_RIGHT_{timestamp}.mp4"
+        output_dir, f"{width}_{height}_{timestamp}_RIGHT.mp4"
     )
 
     fourcc = cv2.VideoWriter.fourcc(*"mp4v")

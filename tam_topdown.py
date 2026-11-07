@@ -1,4 +1,4 @@
-from tam_constants import SCREEN_CENTER_X
+from tam_constants import SCREEN_CENTER_X, CAMERA_CAPTURE_X
 from tam_classes import Point
 import math
 import numpy as np
@@ -30,11 +30,26 @@ def calc_focal_length():
 
 
 def calc_angle_from_screen_center(point: Point) -> float:
+    '''from a point on the camera capture, determine the angle from center of the picam's 62.2deg field of view'''
 
-    pixel_x = point.x
-    delta_x = pixel_x - SCREEN_CENTER_X
+    half_screen_x = int(CAMERA_CAPTURE_X / 2)
+    half_field_of_view_deg = 31.1
+    half_fov_rad = math.radians(half_field_of_view_deg)
 
-    return math.atan2(delta_x, FOCAL_LENGTH)
+    adjacent_side = half_screen_x / math.tan(half_fov_rad)
+
+    angle_rad = math.atan(point.x / adjacent_side)
+
+    return angle_rad
+
+
+def convert_angle_from_screen_center_to_ccw_east(angle_rad: float) -> float:
+    '''convert a radian measure from "North" with northwest as negative and northeast as positive, to a measure ccw from the east +x axis'''
+    north_as_rad = np.pi / 2
+
+    from_east_as_rad = north_as_rad - angle_rad
+
+    return from_east_as_rad
 
 
 def convert_to_field(
