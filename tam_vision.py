@@ -2,10 +2,7 @@
 
 import cv2
 import numpy as np
-
-
-import cv2
-import numpy as np
+import math
 from tam_classes import FieldState, Point, Detection
 from tam_constants import (
     BALL_RED,
@@ -387,6 +384,7 @@ def get_list_detections(hsv_frame: np.ndarray, search_dict: dict) -> list[Detect
 
     return detect_list
 
+
 def example_vision_full_stack(
     frame_camera: np.ndarray, frame_field: np.ndarray, search_dict: dict
 ) -> np.ndarray:
@@ -456,3 +454,5 @@ def example_vision_full_stack(
     combined_frame = concat_frames(left_col, frame_field, "RIGHT")
 
     return combined_frame
+
+

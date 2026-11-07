@@ -2,6 +2,9 @@ import cv2
 from pathlib import Path
 import numpy as np
 from tam_constants import *
+from tam_frame import load_image_as_frame, show_frame
+from tam_vision import get_hsv_frame, get_list_detections
+from tam_draw import draw_detection_list_to_camera_frame
 
 photos_and_vids_dir = TRAINING_DATA
 hsv_dir = HSV_BOUNDS
@@ -14,17 +17,24 @@ def main():
 
     csv_name = "classroom"
 
-    ball_path = "hsv_photos/goalposts_and_ball.png"
-    goalpost_green_path = ball_path
-    goalpost_purple_path = ball_path
-    hat_yellow_path = "hsv_photos/hat_yellow.png"
-    hat_blue_path = "hsv_photos/hat_blue.png"
+    file_path = "hsv_photos/all_in_one_right.png"
 
-    update_hsv(csv_name=csv_name, image_path= ball_path, object_name= BALL_RED)
-    update_hsv(csv_name=csv_name, image_path= goalpost_green_path, object_name= HAT_GREEN)
-    update_hsv(csv_name=csv_name, image_path= goalpost_purple_path, object_name= HAT_FUCHSIA)
-    update_hsv(csv_name=csv_name, image_path= hat_yellow_path, object_name= HAT_YELLOW)
-    update_hsv(csv_name=csv_name, image_path= hat_blue_path, object_name= HAT_BLUE)
+    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= BALL_RED)
+    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_GREEN)
+    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_FUCHSIA)
+    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_YELLOW)
+    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_BLUE)
+
+    # show what the program will detect
+
+    frame = load_image_as_frame(file_path)
+    frame_hsv = get_hsv_frame(frame.copy())
+
+    search_dict = load_search_dict_from_csv()
+
+    list_detections = get_list_detections(hsv_frame=frame_hsv, search_dict=search_dict)
+    frame_annotated = draw_detection_list_to_camera_frame(frame, list_detections)
+    show_frame(frame_annotated)
 
 
 
@@ -35,7 +45,7 @@ def update_hsv(object_name : str, image_path: str, csv_name: str):
     print(f"TUNE VALUES FOR {object_name}")
     file_path = HSV_BOUNDS + "/" + csv_name + ".csv"
     search_dict = load_search_dict_from_csv(filename=file_path)
-    hsv_dict = tune_hsv_range(image_path=image_path)
+    hsv_dict = tune_hsv_range(image_path=image_path, label= object_name)
 
     search_dict[object_name][HSV_HI] = hsv_dict[HSV_HI]
     search_dict[object_name][HSV_LO] = hsv_dict[HSV_LO]
@@ -50,11 +60,12 @@ def save_search_dict_to_csv(search_dict, filename):
     """Save a nested search dictionary to a CSV file."""
     fieldnames = [
         "search_name",
-        "DRAW_COLOR",
-        "HSV_LO",
-        "HSV_HI",
-        "KNOWN_WIDTH",
-        "ANALYSIS_SHAPE",
+        DRAW_COLOR,
+        HSV_LO,
+        HSV_HI,
+        KNOWN_WIDTH,
+        ANALYSIS_SHAPE,
+        MIN_AREA_PX
     ]
 
     with open(filename, "w", newline="") as f:
@@ -106,7 +117,7 @@ def load_search_dict_from_csv(filename : str = HSV_CSV_PATH):
     return search_dict
 
 
-def tune_hsv_range(image_path, output_txt="hsv_range.txt"):
+def tune_hsv_range(image_path, label: str = ""):
     """
     Open an image, let the user click an object, tune an HSV mask,
     and save the accepted HSV range to a text file.
@@ -135,7 +146,10 @@ def tune_hsv_range(image_path, output_txt="hsv_range.txt"):
                 h, s, v = clicked_hsv
                 print(f"\nClicked pixel HSV: H={h}, S={s}, V={v}")
 
-    window_name = "Click an object"
+    if label == "":
+        window_name = "Click an object"
+    else:
+        window_name = f"Click on {label}"
     mask_window_name = "HSV Mask"
 
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)

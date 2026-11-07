@@ -1,7 +1,8 @@
 from tam_constants import SCREEN_CENTER_X, CAMERA_CAPTURE_X
-from tam_classes import Point
+from tam_classes import Point, Detection
 import math
 import numpy as np
+import random
 
 FOCAL_LENGTH = 1253.333     # recalc this when able
 
@@ -30,17 +31,21 @@ def calc_focal_length():
 
 
 def calc_angle_from_screen_center(point: Point) -> float:
-    '''from a point on the camera capture, determine the angle from center of the picam's 62.2deg field of view'''
+    """Return horizontal angle in radians relative to the camera's center.
 
-    half_screen_x = int(CAMERA_CAPTURE_X / 2)
-    half_field_of_view_deg = 31.1
-    half_fov_rad = math.radians(half_field_of_view_deg)
+    Assumes a 62.2-degree horizontal field of view.
+    Negative angles are left of center; positive angles are right.
+    """
+    if CAMERA_CAPTURE_X <= 0:
+        raise ValueError("CAMERA_CAPTURE_X must be positive.")
 
-    adjacent_side = half_screen_x / math.tan(half_fov_rad)
+    center_x = CAMERA_CAPTURE_X / 2.0
+    half_fov_rad = math.radians(62.2 / 2.0)
 
-    angle_rad = math.atan(point.x / adjacent_side)
+    focal_length_px = center_x / math.tan(half_fov_rad)
+    offset_x = point.x - center_x
 
-    return angle_rad
+    return math.atan2(offset_x, focal_length_px)
 
 
 def convert_angle_from_screen_center_to_ccw_east(angle_rad: float) -> float:
@@ -50,6 +55,92 @@ def convert_angle_from_screen_center_to_ccw_east(angle_rad: float) -> float:
     from_east_as_rad = north_as_rad - angle_rad
 
     return from_east_as_rad
+
+
+import math
+
+
+def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float) -> tuple[float,float]:
+    """Return horizontal-plane range in inches and bearing in radians from the cameras' midpoint.
+
+    Inputs are angles in radians measured from a shared forward direction:
+    negative points left; positive points right.
+
+    Does NOT raise errors (stopping the program), just returns 0,0 if there are errors
+
+    Assumes cameras are 4 inches apart with parallel forward axes.
+    Returns the range in inches and the angle in radians to the object wrt the center of the camera line
+    """
+    dis_between_cameras_in = 4.0
+
+    for angle in (rad_left, rad_right):
+        if not math.isfinite(angle) or not -math.pi / 2 < angle < math.pi / 2:
+            
+            return 0.0, 0.0
+            #raise ValueError("Angles must be finite and between -pi/2 and pi/2.")
+
+    tan_left = math.tan(rad_left)
+    tan_right = math.tan(rad_right)
+    disparity = tan_left - tan_right
+
+    if disparity <= 0:
+        # raise ValueError(
+        #     "Sightings must converge ahead of the cameras; "
+        #     "rad_left must be greater than rad_right."
+        # )
+
+        return 0.0 , 0.0
+
+    forward_in = dis_between_cameras_in / disparity
+    sideways_in = forward_in * (tan_left + tan_right) / 2.0
+
+    dis_in = math.hypot(sideways_in, forward_in)
+    bearing_rad = math.atan2(sideways_in, forward_in)
+
+    return dis_in, bearing_rad
+
+
+def try_to_merge_detections(detect_left: Detection, detect_right: Detection) -> Detection:
+    '''try to find the range from two detections. If unable, flip a coin and return the left or right detection'''
+
+    
+    if detect_left.in_frame and detect_right.in_frame:
+        dis_in, bearing_rad = calc_range_and_bearing_with_two_sightings(detect_left.ang_from_bot_rad, detect_right.ang_from_bot_rad)
+
+        # if the function wasn't able to do range finding (aka returning 0,0), flip a coin and return a detection
+        if (dis_in == 0) and (bearing_rad == 0):
+            #print("unable to merge in calc_range, flipping coin")
+            if random.choice([0,1]) == 0:
+                return detect_left
+            else:
+                return detect_right
+
+        # otherwise, update inifo and return a detection
+        else:
+            # copy the left's info but overwrite other info
+            merged_detect = detect_left
+            merged_detect.name = detect_left.name
+            merged_detect.dis_from_bot_in = dis_in
+            merged_detect.ang_from_bot_rad = bearing_rad
+
+            #print("merged detections")
+            return merged_detect
+
+    # if only one detection is in frame, return that one
+    elif detect_left.in_frame:
+        #print("unable to merge, only left in frame, returning left")
+        return detect_left
+    elif detect_right.in_frame:
+        #print("unable to merge, only right in frame, returning right")
+        return detect_right
+
+    # if neither are in frame, return the left just so the program keeps going
+    else:
+        #print("unable to merge, neither in frame, returning left")
+        return detect_left
+
+
+
 
 
 def convert_to_field(
@@ -73,106 +164,3 @@ def convert_to_field(
 
     return object_pos
 
-
-def robot_pos_from_object(
-    object_pos: Point,
-    robot_bearing_rad: float,
-    object_dis: float,
-    object_bearing_rad: float,
-) -> Point:
-    """Calculate the robot's field position from a fixed object's position.
-
-    object_pos is the object's known position in the field frame.
-    robot_bearing_rad is the robot's known heading, measured
-        counter-clockwise from the field's +x axis.
-    object_dis is the measured distance from the robot to the object.
-    object_bearing_rad is positive to the robot's right, negative left.
-
-    Field +y is up-field; +x is field-right.
-    """
-    field_bearing_rad = robot_bearing_rad - object_bearing_rad
-
-    return Point(
-        x=object_pos.x - object_dis * math.cos(field_bearing_rad),
-        y=object_pos.y - object_dis * math.sin(field_bearing_rad),
-    )
-
-
-def robot_pose_from_objects(
-    object1_pos: Point,
-    object1_dis: float,
-    object1_bearing_rad: float,
-    object2_pos: Point,
-    object2_dis: float,
-    object2_bearing_rad: float,
-) -> tuple[Point, float]:
-    """Calculate robot position and heading from two fixed objects.
-
-    Both observations must correspond to the same robot pose.
-
-    Object positions are known field coordinates.
-    Object bearings are positive right, negative left of robot forward.
-    Robot heading is counter-clockwise from field +x.
-
-    Returns:
-        (robot_pos, robot_bearing_rad)
-        Heading is normalized to [-pi, pi).
-
-    With noisy observations, returns the equal-weight least-squares
-    rigid alignment of the two observed points to their field positions.
-    """
-    values = (
-        object1_pos.x, object1_pos.y,
-        object2_pos.x, object2_pos.y,
-        object1_dis, object2_dis,
-        object1_bearing_rad, object2_bearing_rad,
-    )
-    if not all(math.isfinite(value) for value in values):
-        raise ValueError("All coordinates and measurements must be finite.")
-
-    if object1_dis <= 0 or object2_dis <= 0:
-        raise ValueError("Object distances must be positive.")
-
-    # Local frame: +x forward, +y left.
-    local1_x = object1_dis * math.cos(object1_bearing_rad)
-    local1_y = -object1_dis * math.sin(object1_bearing_rad)
-    local2_x = object2_dis * math.cos(object2_bearing_rad)
-    local2_y = -object2_dis * math.sin(object2_bearing_rad)
-
-    field_dx = object2_pos.x - object1_pos.x
-    field_dy = object2_pos.y - object1_pos.y
-    local_dx = local2_x - local1_x
-    local_dy = local2_y - local1_y
-
-    if math.hypot(field_dx, field_dy) <= 1e-9:
-        raise ValueError("The two fixed objects must have distinct positions.")
-
-    if math.hypot(local_dx, local_dy) <= 1e-9:
-        raise ValueError("The observations must identify distinct local points.")
-
-    robot_bearing_rad = (
-        math.atan2(field_dy, field_dx)
-        - math.atan2(local_dy, local_dx)
-    )
-    robot_bearing_rad = (
-        (robot_bearing_rad + math.pi) % (2 * math.pi) - math.pi
-    )
-
-    cos_heading = math.cos(robot_bearing_rad)
-    sin_heading = math.sin(robot_bearing_rad)
-
-    local_mid_x = (local1_x + local2_x) / 2
-    local_mid_y = (local1_y + local2_y) / 2
-    field_mid_x = (object1_pos.x + object2_pos.x) / 2
-    field_mid_y = (object1_pos.y + object2_pos.y) / 2
-
-    robot_pos = Point(
-        x=field_mid_x - (
-            cos_heading * local_mid_x - sin_heading * local_mid_y
-        ),
-        y=field_mid_y - (
-            sin_heading * local_mid_x + cos_heading * local_mid_y
-        ),
-    )
-
-    return robot_pos, robot_bearing_rad

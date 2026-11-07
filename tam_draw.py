@@ -4,9 +4,9 @@ from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detec
 import math
 from tam_colors import *
 from tam_constants import *
-from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot, convert_to_field, robot_pos_from_object
-from tam_decide import determine_goalpost_position
-from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER
+from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot, convert_to_field
+from tam_decide import determine_goalpost_position, get_detection_lines, get_detection_dict
+from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER, FIELD_GOALBOX_CENTER_BOTTOM
 
 
 PIXELS_PER_INCH = 5
@@ -260,7 +260,11 @@ def draw_top_down_arrows(
     return field_frame
 
 
-def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK)-> np.ndarray:
+def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK, is_in_inches: bool = False)-> np.ndarray:
+
+    if is_in_inches:
+        start = inches_to_screen(start)
+        end = inches_to_screen(end)
 
     frame = cv2.arrowedLine(
         img=frame,
@@ -281,7 +285,7 @@ def draw_line_point_to_point(frame: np.ndarray, start: Point, end: Point, color:
         pt1= get_point_int_tuple(start),
         pt2= get_point_int_tuple(end),
         color= color,
-        thickness= PIXELS_PER_INCH
+        thickness= 1
     )
 
     return frame
@@ -401,7 +405,7 @@ def draw_notched_rectangle(
     return image
 
 
-def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point, bearing_rad: float, color: tuple[int,int,int]= BLACK) -> np.ndarray:
+def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point= FIELD_GOALBOX_CENTER_BOTTOM, bearing_rad: float = BEARING_NORTH, color: tuple[int,int,int]= YELLOW) -> np.ndarray:
 
     pos_px = inches_to_screen(pos_in)
 
@@ -889,6 +893,7 @@ def add_text_left_of_point(
     color=(255, 255, 255),
     thickness: int = 2,
     line_spacing: int = 10,
+    is_in_inches: bool = False,
 ):
     """
     Draw `lines` vertically centered around center_left.y, with all lines
@@ -898,6 +903,10 @@ def add_text_left_of_point(
     """
     if not lines:
         return frame
+
+    # if the given point is in field inches convert to screen pixels
+    if is_in_inches:
+        center_left = inches_to_screen(center_left)
 
     # Measure each line
     text_sizes = []
@@ -1058,16 +1067,13 @@ def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detectio
     draw_color = color_dict[detection.name]
     camera_frame = draw_circle_to_frame(camera_frame, detection.camera_pos_px, radius= int(detection.width_px/2), color=draw_color)
 
-    lines = [
-        str(detection.name),
-        f"{round(detection.dis_from_bot_in)} in",
-        f"{round(detection.area_px)} px area"
-    ]
-
-    camera_frame = add_text_left_of_point(camera_frame, center_left= detection.camera_pos_px, lines=lines, left_offset= int((detection.width_px/2)*1.2) )
+    detect_lines = get_detection_lines(detection)
 
     if draw_arrow:
         camera_frame = draw_arrow_point_to_point(frame=camera_frame, start= CAMERA_CENTER_BOTTOM, end= detection.camera_pos_px, color=draw_color)
+
+    
+    camera_frame = add_text_left_of_point(camera_frame, center_left= detection.camera_pos_px, lines=detect_lines, left_offset= int((detection.width_px/2)*1.2) )
 
 
     return camera_frame
@@ -1081,6 +1087,64 @@ def draw_detection_list_to_camera_frame(camera_frame: np.ndarray, detect_list : 
         camera_frame = draw_detection_to_camera_frame(camera_frame, detection)
 
     return camera_frame
+
+
+def draw_detection_to_field(
+        field_frame: np.ndarray, 
+        detection: Detection, 
+        robot_pos: Point = FIELD_GOALBOX_CENTER_BOTTOM, 
+        robot_bearing: float = BEARING_NORTH,
+        draw_arrow: bool = False,
+        draw_lines : bool = False) -> np.ndarray:
+    if detection.in_frame == False:
+        return field_frame
+
+    detection_pos_in : Point = convert_to_field(
+        object_bearing_rad= detection.ang_from_bot_rad,
+        object_dis= detection.dis_from_bot_in,
+        robot_bearing_rad= robot_bearing,
+        robot_pos= robot_pos
+    )
+
+    if detection.name == BALL_RED:
+        field_frame = draw_ball_to_field(
+            field_frame= field_frame,
+            ball_pos_in= detection_pos_in
+        )
+
+    elif (detection.name == HAT_BLUE) or (detection.name == HAT_YELLOW):
+        field_frame = draw_robot_to_field(
+            field_frame=field_frame,
+            pos_in= detection_pos_in
+        )
+
+
+    if draw_arrow:
+        detection_draw_color = get_draw_color(detection)
+        field_frame = draw_arrow_point_to_point(field_frame, robot_pos, detection_pos_in, is_in_inches= True, color=detection_draw_color)
+
+    if draw_lines:
+        detect_lines = get_detection_lines(detection)
+        field_frame = add_text_left_of_point(field_frame, detect_lines, detection_pos_in, is_in_inches=True, color= WHITE)
+
+    return field_frame
+
+
+def get_draw_color(detection : Detection) -> tuple[int,int,int]:
+    '''search the detection name and return the color it should be drawn'''
+
+    if detection.name == BALL_RED:
+        return RED
+    elif detection.name == HAT_BLUE:
+        return BLUE
+    elif detection.name == HAT_FUCHSIA:
+        return FUCHSIA
+    elif detection.name == HAT_YELLOW:
+        return YELLOW
+    elif detection.name == HAT_GREEN:
+        return GREEN
+    else:
+        return WHITE
 
 
 def clamp_to_field(given_point_in: Point, label: str = "") -> Point:
@@ -1105,13 +1169,38 @@ def clamp_to_field(given_point_in: Point, label: str = "") -> Point:
     return given_point_in
 
 
-def draw_vertical_line_on_camera_frame(frame: np.ndarray, dis_from_left: int = 0) -> np.ndarray:
+def draw_vertical_line_on_camera_frame(frame: np.ndarray, dis_from_left: int = 0, label = "") -> np.ndarray:
     '''draw a vertical line on the camera frame at a specified distance in pixels from the left'''
 
     point_top = Point(dis_from_left, 0)
     point_bottom = Point(dis_from_left, CAMERA_CAPTURE_Y)
+    point_middle = Point(dis_from_left, SCREEN_CENTER_Y)
 
-    frame = draw_line_point_to_point(frame, point_top, point_bottom)
+    if label != "":
+        frame = add_text_left_of_point(frame, [label], center_left= point_middle)
+
+    frame = draw_line_point_to_point(frame, point_top, point_bottom, color= WHITE)
+
+
+
+    return frame
+
+
+def draw_angle_lines_on_camera_frame(frame: np.ndarray, list_of_angles_deg: list[float] = [-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0]) -> np.ndarray:
+    '''draw vertical lines for each deg listed and return the frame'''
+
+    
+
+    adjacent_side = SCREEN_CENTER_X / math.tan(math.radians(31.1))
+
+    for angle_deg in list_of_angles_deg:
+        opposite_side = adjacent_side * math.tan(math.radians(angle_deg))
+        opposite_side_px = int(opposite_side)
+
+        dis_from_left = SCREEN_CENTER_X + opposite_side_px
+        # print("dis from left px: ", dis_from_left)
+
+        frame = draw_vertical_line_on_camera_frame(frame, dis_from_left, label= f"{angle_deg}deg")
 
     return frame
 
@@ -1146,7 +1235,8 @@ def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState, draw_arrows
             field_frame = draw_arrow_point_to_point(
                 frame=field_frame,
                 start= inches_to_screen(fieldstate.our_bot_pos_in),
-                end= inches_to_screen(fieldstate.ball_pos_in)
+                end= inches_to_screen(fieldstate.ball_pos_in),
+                color= RED,
             )
 
     # draw the opponent
@@ -1162,9 +1252,60 @@ def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState, draw_arrows
             field_frame = draw_arrow_point_to_point(
                 frame=field_frame,
                 start= inches_to_screen(fieldstate.our_bot_pos_in),
-                end= inches_to_screen(fieldstate.their_bot_pos_in)
+                end= inches_to_screen(fieldstate.their_bot_pos_in),
+                color= fieldstate.their_team_color
             )
 
 
     
     return field_frame
+
+
+
+def draw_detection_left_right_to_frame_left(frame_camera_left: np.ndarray, detection_left: Detection, detection_right: Detection) -> np.ndarray:
+    '''
+    Draw circles around detections and arrows to the detections on the camera frame. Using the left frame, draw arrows from the bottom left third and right third,
+    simulating two eyes without needing to show both camera frames
+    '''
+
+    point_bottom_left_third = Point(int(CAMERA_CAPTURE_X / 3), CAMERA_CAPTURE_Y)
+    point_bottom_right_third = Point(int(CAMERA_CAPTURE_X * 2 /3), CAMERA_CAPTURE_Y)
+
+    draw_color = get_draw_color(detection_left)
+
+    # if the right cam sees what the left doesn't draw an arrow to the middle right to show it's over there
+    point_middle_right = Point(CAMERA_CAPTURE_X, SCREEN_CENTER_Y)
+
+    # if neither see it, return the unchanged frame
+    if (detection_left.in_frame == False) and (detection_right.in_frame == False):
+        return frame_camera_left
+
+    # if only the left sees it, draw the arrow from bottom left third to detection
+    elif (detection_left.in_frame == True) and (detection_right.in_frame == False):
+        frame_camera_left = draw_detection_to_camera_frame(frame_camera_left, detection_left, draw_arrow= False)
+        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
+
+    # if only the right sees it, draw the arrow from bottom right third to off screen
+    elif (detection_left.in_frame == False) and (detection_right.in_frame == True):
+        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= point_middle_right, color= draw_color)
+
+    # if both see it, draw an arrow from both bottom thirds
+    else:
+        frame_camera_left = draw_detection_to_camera_frame(frame_camera_left, detection_left, draw_arrow= False)
+        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
+        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= detection_left.camera_pos_px, color= draw_color)
+
+    return frame_camera_left
+
+
+def draw_two_cams_to_one(frame_camera_left: np.ndarray, list_detections_left: list[Detection], list_detections_right: list[Detection]) -> np.ndarray:
+    '''
+    Draw circles around detections and arrows to the detections on the camera frame. Using the left frame, draw arrows from the bottom left third and right third,
+    simulating two eyes without needing to show both camera frames
+    '''
+
+    for detect_left, detect_right in zip(list_detections_left, list_detections_right):
+        frame_camera_left = draw_detection_left_right_to_frame_left(frame_camera_left, detect_left, detect_right)
+
+
+    return frame_camera_left
