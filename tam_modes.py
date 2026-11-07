@@ -1,7 +1,7 @@
+# THIS IS ALL AI AND NEEDS A LOOK THROUGH
+# NOT READY RIGHT NOW
+
 """
-THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-
-
 Simple state machine ("modes") for the soccer bot.
 
 HOW IT WORKS
@@ -25,38 +25,17 @@ import math
 import time
 from enum import Enum, auto
 
-from tam_classes import Point, Fi
-THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-
-dState, BotCommand, get_capture_zone_point
-from tam_commands import BOT_FORW
-THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-
-D, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_KICK
-from tam_points import FIELD_GOAL
-THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-
-ENTER_TOP, FIELD_GOALBOX_CENTER_BOTTOM
+from tam_classes import Point, FieldState, BotCommand, get_capture_zone_point
+from tam_commands import BOT_FORWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_KICK
+from tam_points import FIELD_GOAL_CENTER_TOP, FIELD_GOALBOX_CENTER_BOTTOM
 
 
-# -------------------------------
-# THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-# 
-# ------------------------------------------
+# ---------------------------------------------------------------------------
 # 1. The list of modes
-# -------------------------------
-# THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-# 
-# ------------------------------------------
+# ---------------------------------------------------------------------------
 class Mode(Enum):
-    SEARCH = auto()          # sp
-    THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-    
-     until we see the ball
-    APPROACH_BALL = auto()   # dr
-    THIS IS ALL AI IT NEEDS A LOOK ATHORUGH AND FIGURING OUT
-    
-    e to the ball
+    SEARCH = auto()          # spin until we see the ball
+    APPROACH_BALL = auto()   # drive to the ball
     DRIBBLE = auto()         # ball is in front of us, push it toward their goal
     SHOOT = auto()           # kick, then go back to searching
     DEFEND = auto()          # (example stub) go sit in front of our goal
