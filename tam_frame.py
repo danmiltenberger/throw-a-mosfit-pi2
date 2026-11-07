@@ -213,6 +213,26 @@ def load_image_as_frame(im_path: str) -> np.ndarray:
     return frame
 
 
+def resize_frame(frame: np.ndarray, size_mult: float = 1.0) -> np.ndarray:
+    """Scale a frame's width and height, rounding to at least one pixel."""
+    if not np.isfinite(size_mult) or size_mult <= 0:
+        raise ValueError("size_mult must be a finite, positive number.")
+    if frame.ndim not in (2, 3) or frame.size == 0:
+        raise ValueError("frame must be a non-empty grayscale or color image.")
+
+    if size_mult == 1.0:
+        return frame.copy()
+
+    height, width = frame.shape[:2]
+    new_size = (
+        max(1, round(width * size_mult)),
+        max(1, round(height * size_mult)),
+    )
+    interpolation = cv2.INTER_AREA if size_mult < 1.0 else cv2.INTER_LINEAR
+
+    return cv2.resize(frame, new_size, interpolation=interpolation)
+
+
 def save_frame_as_png(frame : np.ndarray, file_name : str = ""):
 
     if file_name == "":
