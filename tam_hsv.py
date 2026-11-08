@@ -113,7 +113,7 @@ def load_search_dict_from_csv(filename : str = HSV_CSV_PATH):
             search_dict[search_name] = params
 
 
-    print(f"loaded search_dict from {filename}")
+    #print(f"loaded search_dict from {filename}")
     return search_dict
 
 

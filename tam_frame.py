@@ -103,7 +103,7 @@ def get_field_frame(USE_DRAWN_FIELD : bool = True, left_is_green = False, bottom
         # Mirror horizontally (left goes to the right)
         frame = cv2.flip(frame, 1)
 
-    print(f"loaded empty field frame {style}")
+   # print(f"loaded empty field frame {style}")
     return frame
 
 

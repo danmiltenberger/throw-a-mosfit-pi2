@@ -426,8 +426,7 @@ def convert_detect_dict_to_fieldstate(detect_dict : dict[str, Detection], prev_f
     ball_red : Detection = detect_dict[BALL_RED]
 
     # if we see a goalpost, try to update the robot position wrt the goalpost
-    if goalpost_green.in_frame or goalpost_purpl.in_frame:
-        fieldstate = try_to_update_robot_pos_from_goalposts(goalpost_purple=goalpost_purpl, goalpost_green=goalpost_green, fieldstate=fieldstate)
+    fieldstate = update_bot_position_from_goalposts(fieldstate, goalpost_green, goalpost_purpl)
 
     # try to add the ball to the state, otherwise it stays the same as previous state
     if ball_red.in_frame:
@@ -464,6 +463,19 @@ def convert_detect_dict_to_fieldstate(detect_dict : dict[str, Detection], prev_f
                 robot_bearing_rad= fieldstate.our_bot_bearing_rad,
                 robot_pos= fieldstate.our_bot_pos_in
             )
+
+
+    return fieldstate
+
+
+def update_bot_position_from_goalposts(fieldstate: FieldState, detection_green: Detection, detection_purple) -> FieldState:
+    '''
+    Update the robot's position by comparing the distance and range to two known points on the field
+    '''
+
+    
+
+
 
 
     return fieldstate

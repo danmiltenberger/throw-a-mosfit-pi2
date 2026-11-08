@@ -25,21 +25,24 @@ def main():
 
     frame_left = load_image_as_frame("hsv_photos/all_in_one_left.png")
     frame_right = load_image_as_frame("hsv_photos/all_in_one_right.png")
+    frame_field = get_field_frame(left_is_green= True)
 
     search_dict = load_search_dict_from_csv()
-    frame_field_original = get_field_frame(left_is_green= True)
     prev_fieldstate = get_init_fieldstate()
 
 
     frame, fieldstate = match_two_cam_frame(
         prev_fieldstate= prev_fieldstate,
         search_dict= search_dict,
-        frame_field= frame_field_original,
+        frame_field= frame_field,
         frame_cam_right= frame_right,
         frame_cam_left= frame_left,
     )
 
+    print(fieldstate)
     show_frame(frame)
+
+
 
 
 
