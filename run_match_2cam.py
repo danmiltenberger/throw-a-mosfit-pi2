@@ -1,5 +1,5 @@
 import cv2
-from picamera2 import Picamera2
+from picamera2 import Picamera2 #type: ignore
 from tam_binocular import get_left_right_frames, setup_left_right_cams, CAM_LEFT, CAM_RIGHT
 from tam_frame import show_frame, concat_frames
 

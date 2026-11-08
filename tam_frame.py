@@ -233,14 +233,19 @@ def resize_frame(frame: np.ndarray, size_mult: float = 1.0) -> np.ndarray:
     return cv2.resize(frame, new_size, interpolation=interpolation)
 
 
-def save_frame_as_png(frame : np.ndarray, file_name : str = ""):
+def save_frame_as_png(frame : np.ndarray, file_name : str = "", file_path : str = ""):
 
     if file_name == "":
         file_name = datetime.now().strftime("%Y_%m_%dT%H_%M_%S")
+        file_name = "training_data/" + file_name + ".png"
 
-    file_name = "training_data/" + file_name + ".png"
-    cv2.imwrite(file_name, img= frame)
-    print(f"saved {file_name}")
+    if file_path != "":
+        cv2.imwrite(file_path, img= frame)
+        print(f"saved {file_path}")
+    else:
+    
+        cv2.imwrite(file_name, img= frame)
+        print(f"saved {file_name}")
 
 
 def load_video_as_list_of_frames(vid_path: str) -> list[np.ndarray]:
@@ -341,3 +346,12 @@ def load_video_as_list_of_frames(vid_path: str) -> list[np.ndarray]:
 
     return frames
 
+
+def save_frame_as_png_from_video(video_path: str, frame_index: int, save_path: str):
+    '''load a video, index to the specified frame, then save it'''
+
+    list_frames = load_video_as_list_of_frames(video_path)
+
+    frame = list_frames[frame_index]
+
+    save_frame_as_png(frame=frame, file_path=save_path)
