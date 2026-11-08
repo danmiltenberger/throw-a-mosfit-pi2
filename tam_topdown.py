@@ -100,44 +100,7 @@ def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float)
     return dis_in, bearing_rad
 
 
-def try_to_merge_detections(detect_left: Detection, detect_right: Detection) -> Detection:
-    '''try to find the range from two detections. If unable, flip a coin and return the left or right detection'''
 
-    
-    if detect_left.in_frame and detect_right.in_frame:
-        dis_in, bearing_rad = calc_range_and_bearing_with_two_sightings(detect_left.ang_from_bot_rad, detect_right.ang_from_bot_rad)
-
-        # if the function wasn't able to do range finding (aka returning 0,0), flip a coin and return a detection
-        if (dis_in == 0) and (bearing_rad == 0):
-            #print("unable to merge in calc_range, flipping coin")
-            if random.choice([0,1]) == 0:
-                return detect_left
-            else:
-                return detect_right
-
-        # otherwise, update inifo and return a detection
-        else:
-            # copy the left's info but overwrite other info
-            merged_detect = detect_left
-            merged_detect.name = detect_left.name
-            merged_detect.dis_from_bot_in = dis_in
-            merged_detect.ang_from_bot_rad = bearing_rad
-
-            #print("merged detections")
-            return merged_detect
-
-    # if only one detection is in frame, return that one
-    elif detect_left.in_frame:
-        #print("unable to merge, only left in frame, returning left")
-        return detect_left
-    elif detect_right.in_frame:
-        #print("unable to merge, only right in frame, returning right")
-        return detect_right
-
-    # if neither are in frame, return the left just so the program keeps going
-    else:
-        #print("unable to merge, neither in frame, returning left")
-        return detect_left
 
 
 

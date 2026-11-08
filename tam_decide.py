@@ -7,7 +7,7 @@ from tam_classes import Point, Line, FieldState, BotCommand, get_capture_zone_po
 from tam_commands import *
 from tam_ourbot import *
 from tam_points import *
-from tam_colors import PURPLE, GREEN
+from tam_colors import PURPLE, GREEN, BLUE, YELLOW
 from tam_topdown import convert_to_field, calc_range_and_bearing_with_two_sightings
 from tam_constants import HAT_BLUE, HAT_FUCHSIA, HAT_GREEN, HAT_YELLOW, BALL_RED, BEARING_NORTH, BEARING_SOUTH
 
@@ -441,29 +441,29 @@ def convert_detect_dict_to_fieldstate(detect_dict : dict[str, Detection], prev_f
             robot_pos= fieldstate.our_bot_pos_in
         )
 
-    # try to add our opponent, otherwise it stays the same as previous state
-    if bot_blue.in_frame:
+    # try to add our opponent to the frame
+    if fieldstate.our_team_color == BLUE:
+        if bot_yellow.in_frame:
 
-        fieldstate.their_bot_is_seen = True
+            fieldstate.their_bot_is_seen = True
 
-        fieldstate.their_bot_pos_in = convert_to_field(
-            object_bearing_rad= bot_blue.ang_from_bot_rad,
-            object_dis= bot_blue.dis_from_bot_in,
-            robot_bearing_rad= fieldstate.our_bot_bearing_rad,
-            robot_pos= fieldstate.our_bot_pos_in
-        )
+            fieldstate.their_bot_pos_in = convert_to_field(
+                object_bearing_rad= bot_yellow.ang_from_bot_rad,
+                object_dis= bot_yellow.dis_from_bot_in,
+                robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+                robot_pos= fieldstate.our_bot_pos_in
+            )
 
-    # TODO - only search for yellow or blue, save some time during the match
-    if bot_yellow.in_frame:
+    if fieldstate.our_team_color == YELLOW:
+        if bot_blue.in_frame:
+            fieldstate.their_bot_is_seen = True
 
-        fieldstate.their_bot_is_seen = True
-
-        fieldstate.their_bot_pos_in = convert_to_field(
-            object_bearing_rad= bot_yellow.ang_from_bot_rad,
-            object_dis= bot_yellow.dis_from_bot_in,
-            robot_bearing_rad= fieldstate.our_bot_bearing_rad,
-            robot_pos= fieldstate.our_bot_pos_in
-        )
+            fieldstate.their_bot_pos_in = convert_to_field(
+                object_bearing_rad= bot_blue.ang_from_bot_rad,
+                object_dis= bot_blue.dis_from_bot_in,
+                robot_bearing_rad= fieldstate.our_bot_bearing_rad,
+                robot_pos= fieldstate.our_bot_pos_in
+            )
 
 
     return fieldstate
