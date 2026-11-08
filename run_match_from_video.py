@@ -12,31 +12,33 @@ from tam_colors import BLUE
 def main():
 
     # demonstration of one frame
-    # frame_left = load_image_as_frame("hsv_photos/all_in_one_left.png")
-    # frame_right = load_image_as_frame("hsv_photos/all_in_one_right.png")
-    # frame_field = get_field_frame(left_is_green= True)
+    frame_left = load_image_as_frame("hsv_photos/all_in_one_left.png")
+    frame_right = load_image_as_frame("hsv_photos/all_in_one_right.png")
+    frame_field = get_field_frame(left_is_green= True)
 
-    # search_dict = load_search_dict_from_csv()
-    # prev_fieldstate = get_init_fieldstate()
+    search_dict = load_search_dict_from_csv()
+    prev_fieldstate = get_init_fieldstate()
 
 
-    # frame, fieldstate = match_two_cam_frame(
-    #     prev_fieldstate= prev_fieldstate,
-    #     search_dict= search_dict,
-    #     frame_field= frame_field,
-    #     frame_cam_right= frame_right,
-    #     frame_cam_left= frame_left,
-    # )
+    frame, fieldstate = match_two_cam_frame(
+        prev_fieldstate= prev_fieldstate,
+        search_dict= search_dict,
+        frame_field= frame_field,
+        frame_cam_right= frame_right,
+        frame_cam_left= frame_left,
+    )
 
-    # print(fieldstate)
-    # show_frame(frame)
+    print(fieldstate)
+    show_frame(frame)
 
     # demonstration of video
     # yea I know these are mislabeled, but I think they were just saved the wrong way  
-    right_cam_vid = "training_data/1280_720_2026_11_5_13_28_LEFT.mp4"
-    left_cam_vid = "training_data/1280_720_2026_11_5_13_28_RIGHT.mp4"
+    # right_cam_vid = "training_data/1280_720_2026_11_5_13_28_LEFT.mp4"
+    # left_cam_vid = "training_data/1280_720_2026_11_5_13_28_RIGHT.mp4"
 
-    match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
+    # match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
+
+    pass
 
 
 
