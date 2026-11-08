@@ -1208,7 +1208,10 @@ def draw_vertical_line_on_camera_frame(frame: np.ndarray, dis_from_left: int = 0
     return frame
 
 
-def draw_angle_lines_on_camera_frame(frame: np.ndarray, list_of_angles_deg: list[float] = [-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0]) -> np.ndarray:
+def draw_angle_lines_on_camera_frame(
+        frame: np.ndarray, 
+        add_text: bool = False,
+        list_of_angles_deg: list[float] = [-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0]) -> np.ndarray:
     '''draw vertical lines for each deg listed and return the frame'''
 
     
@@ -1222,7 +1225,12 @@ def draw_angle_lines_on_camera_frame(frame: np.ndarray, list_of_angles_deg: list
         dis_from_left = SCREEN_CENTER_X + opposite_side_px
         # print("dis from left px: ", dis_from_left)
 
-        frame = draw_vertical_line_on_camera_frame(frame, dis_from_left, label= f"{angle_deg}deg")
+        if add_text == False:
+            label = ""
+        else:
+            label =  f"{angle_deg}deg"
+
+        frame = draw_vertical_line_on_camera_frame(frame, dis_from_left, label=label)
 
     return frame
 
@@ -1284,7 +1292,11 @@ def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState, draw_arrows
 
 
 
-def draw_detection_left_right_to_frame_left(frame_camera_left: np.ndarray, detection_left: Detection, detection_right: Detection) -> np.ndarray:
+def draw_detection_left_right_to_frame_left(
+        frame_camera_left: np.ndarray, 
+        detection_left: Detection, 
+        detection_right: Detection,
+        draw_arrows: bool = False) -> np.ndarray:
     '''
     Draw circles around detections and arrows to the detections on the camera frame. Using the left frame, draw arrows from the bottom left third and right third,
     simulating two eyes without needing to show both camera frames
@@ -1305,29 +1317,39 @@ def draw_detection_left_right_to_frame_left(frame_camera_left: np.ndarray, detec
     # if only the left sees it, draw the arrow from bottom left third to detection
     elif (detection_left.in_frame == True) and (detection_right.in_frame == False):
         frame_camera_left = draw_detection_to_camera_frame(frame_camera_left, detection_left, draw_arrow= False)
-        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
+        
+        if draw_arrows:
+            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
 
     # if only the right sees it, draw the arrow from bottom right third to off screen
     elif (detection_left.in_frame == False) and (detection_right.in_frame == True):
-        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= point_middle_right, color= draw_color)
+        
+        if draw_arrows:
+            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= point_middle_right, color= draw_color)
 
     # if both see it, draw an arrow from both bottom thirds
     else:
         frame_camera_left = draw_detection_to_camera_frame(frame_camera_left, detection_left, draw_arrow= False)
-        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
-        frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= detection_left.camera_pos_px, color= draw_color)
+        
+        if draw_arrows:
+            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
+            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= detection_left.camera_pos_px, color= draw_color)
 
     return frame_camera_left
 
 
-def draw_two_cams_to_one(frame_camera_left: np.ndarray, list_detections_left: list[Detection], list_detections_right: list[Detection]) -> np.ndarray:
+def draw_two_cams_to_one(
+        frame_camera_left: np.ndarray, 
+        list_detections_left: list[Detection], 
+        list_detections_right: list[Detection],
+        draw_arrows: bool = False) -> np.ndarray:
     '''
     Draw circles around detections and arrows to the detections on the camera frame. Using the left frame, draw arrows from the bottom left third and right third,
     simulating two eyes without needing to show both camera frames
     '''
 
     for detect_left, detect_right in zip(list_detections_left, list_detections_right):
-        frame_camera_left = draw_detection_left_right_to_frame_left(frame_camera_left, detect_left, detect_right)
+        frame_camera_left = draw_detection_left_right_to_frame_left(frame_camera_left, detect_left, detect_right, draw_arrows)
 
 
     return frame_camera_left
