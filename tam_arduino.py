@@ -29,7 +29,7 @@ def send_command_to_arduino(command : BotCommand):
 
     with serial.Serial(
         port=port,
-        baudrate=9600,
+        baudrate=115200,
         timeout=3,
         write_timeout=3,
     ) as arduino:
