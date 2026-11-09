@@ -13,7 +13,8 @@ def send_to_arduino(connection, message):
     reply = connection.readline()
 
     if not reply.endswith(b"\n"):
-        raise TimeoutError("No complete reply received from the Arduino.")
+        pass
+        #raise TimeoutError("No complete reply received from the Arduino.")
 
     return reply.decode("utf-8").rstrip("\r\n")
 
