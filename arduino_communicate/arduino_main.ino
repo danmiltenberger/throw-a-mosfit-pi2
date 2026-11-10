@@ -19,7 +19,7 @@ degree to wheel drive
 #include <SparkFun_TB6612.h>
 #include <stdlib.h>
 #include <string.h>
-#include <Wire.h>
+// #include <Wire.h>
 #include <ezButton.h>
 
 // SENSOR CONFIGURATION ___________________________________________
@@ -121,7 +121,7 @@ const int motor_speed = 255; // we can only run full speed, unless we switch (22
 
 //  PI SETTINGS ___________________________________________
 
-#define I2C_ADDRESS 0x08
+// #define I2C_ADDRESS 0x08
 #define PI_Serial 115200
 const int DEADBAND = 12; // Ignore small errors when the object is near the center
 char buffer[32]; // Buffer for messages received from the Raspberry Pi
@@ -147,11 +147,11 @@ void setup() {
   // PI COMMUNICATION 
 
 
-  Serial.begin(115200);
+  Serial.begin(PI_Serial);
 
-  Wire.begin(0x08);
-  Wire.onReceive(receiveEvent);
-  Wire.onRequest(requestEvent);
+  // Wire.begin(I2C_ADDRESS);
+  // Wire.onReceive(receiveEvent);
+  // Wire.onRequest(requestEvent);
 
 
 
@@ -186,7 +186,9 @@ void setup() {
 
 
   // SETUP
-  Serial.println("Ready for I2C commands");
+
+  Serial.println("READY");
+  
 }
 
 //  MAIN LOOP      
@@ -199,19 +201,27 @@ void loop() {
   leftPayload_sensor = (byte)(left_color);
   rightPayload_sensor = (byte)(right_color);
 
+  readSerialCommand(); // Read command from Serial (Pi)
+
+  
   if (commandReady) {
 
-    noInterrupts();
+    
     String command = receivedCommand;
     receivedCommand = "";
     commandReady = false;
-    interrupts();
+    
 
-    Serial.print("Received: ");
-    Serial.println(command);
+    Serial.print("ACK "); 
+    Serial.print(command);
+    Serial.print(" "); 
+    Serial.print(leftPayload_sensor); 
+    Serial.print(" "); 
+    Serial.println(rightPayload_sensor);
 
     read_py(command);
   }
+  
   
 }
 
@@ -221,7 +231,7 @@ void loop() {
 
 void read_py (String command) {
     String operation = command.substring(0,1);
-    int duration = command.substring(1,5).toInt();
+    int duration = command.substring(1).toInt();
 
     if (operation == "W") {
         wheel_go(duration);
@@ -280,8 +290,10 @@ void read_py (String command) {
 // FUNCTIONS _______________________________________________________________________________
 
 
-// I2C COMMUNICATION _______________________________________________________________________________
+// I2C OR USB SERIAL COMMUNICATION _______________________________________________________________________________
+/*
 void receiveEvent(int howMany) {
+  
   while (Wire.available()) {
     char c = Wire.read();
 
@@ -301,6 +313,19 @@ void requestEvent() {
   // Send the 2-byte series to the Pi
   Wire.write(dataBuffer, 2); 
 }
+*/
+
+void readSerialCommand() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == '\n') {
+      if (receivedCommand.length() > 0) commandReady = true;
+      return;
+    }
+    if (c != '\r') receivedCommand += c;
+  }
+}
+
 
 
 // EXTRA FUNCTIONS _______________________________________________________________________________
@@ -448,6 +473,7 @@ void rotate_right (int duration) {
     forward(motorLF, motorLB, motor_speed);
     back(motorRF, motorRB, motor_speed);
     delay(duration);
+    stop_dear_god_please_stop();
     Serial.println("rotating right");    // DOES THIS PRINT ON SCREEN
 
 
@@ -457,8 +483,8 @@ void rotate_left (int duration) {
     back(motorLF, motorLB, motor_speed);
     forward(motorRF, motorRB, motor_speed);
     delay(duration);
+    stop_dear_god_please_stop();
     Serial.println("rotating left");    // DOES THIS PRINT ON SCREEN
-
 }
 
 
