@@ -184,9 +184,30 @@ void setup() {
   pinMode(pinIRa_2,INPUT);
 
 
+  // Sys Check
+  Serial.println("Running system check");
+
+  delay(2000);
+  wheel_go(2);
+
+  delay(2000);
+  wheel_go_back(2);
+
+  delay(2000);
+  rotate_left(2);
+
+  delay(2000);
+  rotate_right(2);
+
+  delay(2000);
+  wheel_go(2);
+
+
 
   // SETUP
   Serial.println("Ready for I2C commands");
+
+  
 }
 
 //  MAIN LOOP      
@@ -222,6 +243,11 @@ void loop() {
 void read_py (String command) {
     String operation = command.substring(0,1);
     int duration = command.substring(1,5).toInt();
+
+    Serial.print("Operation");
+    Serial.print(operation);
+    Serial.print("Duration");
+    Serial.println(duration);
 
     if (operation == "W") {
         wheel_go(duration);
@@ -401,7 +427,7 @@ void wheel_go (int duration) {
     Serial.println("dead ahead");    // DOES THIS PRINT ON SCREEN
     forward(motorLF, motorRF, motor_speed);
     forward(motorLB, motorRB, motor_speed);
-    drive_for(duration);
+    drive_for(duration * 1000);
 
 
 }
@@ -409,7 +435,7 @@ void wheel_go (int duration) {
 void wheel_go_back (int duration) {
     back(motorLF, motorRF, motor_speed);
     back(motorLB, motorRB, motor_speed);
-    drive_for(duration);
+    drive_for(duration * 1000);
     Serial.println("put it in reverse");    // DOES THIS PRINT ON SCREEN
 
 }
@@ -451,6 +477,9 @@ void rotate_right (int duration) {
     Serial.println("rotating right");    // DOES THIS PRINT ON SCREEN
 
 
+
+
+
 }
 
 void rotate_left (int duration) { 
@@ -458,7 +487,6 @@ void rotate_left (int duration) {
     forward(motorRF, motorRB, motor_speed);
     delay(duration);
     Serial.println("rotating left");    // DOES THIS PRINT ON SCREEN
-
 }
 
 
