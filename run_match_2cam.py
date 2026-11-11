@@ -28,9 +28,6 @@ def run_2cam():
             prev_fieldstate=prev_fieldstate,
             search_dict=search_dict)
 
-        if KeyboardInterrupt:
-            print("closing out cameras")
-            closeout_left_right_cams(cam_left, cam_right)
 
 
 
