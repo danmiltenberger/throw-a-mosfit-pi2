@@ -1,13 +1,36 @@
 import cv2
 from picamera2 import Picamera2 #type: ignore
-from tam_binocular import get_left_right_frames, setup_left_right_cams, CAM_LEFT, CAM_RIGHT
-from tam_frame import show_frame, concat_frames
+from tam_binocular import get_left_right_frames, setup_left_right_cams, CAM_LEFT, CAM_RIGHT, closeout_left_right_cams
+from tam_frame import show_frame, concat_frames, get_field_frame
+from run_match_from_video import match_two_cam_frame
+from tam_hsv import load_search_dict_from_csv
+from tam_decide import get_init_fieldstate
 
 
 def run_2cam():
+    print(f"running file {__name__}")
     cam_left, cam_right = setup_left_right_cams()
 
-    show_two_cam(cam_left, cam_right)
+    search_dict = load_search_dict_from_csv()
+    frame_field = get_field_frame()
+    prev_fieldstate = get_init_fieldstate()
+
+
+    while True:
+        frame_dict = get_left_right_frames(cam_left,cam_right)
+        frame_left = frame_dict[CAM_LEFT]
+        frame_right = frame_dict[CAM_RIGHT]
+
+        match_two_cam_frame(
+            frame_cam_left=frame_left, 
+            frame_cam_right=frame_right, 
+            frame_field=frame_field.copy(),
+            prev_fieldstate=prev_fieldstate,
+            search_dict=search_dict)
+
+        if KeyboardInterrupt:
+            print("closing out cameras")
+            closeout_left_right_cams(cam_left, cam_right)
 
 
 
