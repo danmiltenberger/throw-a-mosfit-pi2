@@ -60,7 +60,7 @@ def convert_angle_from_screen_center_to_ccw_east(angle_rad: float) -> float:
 import math
 
 
-def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float) -> tuple[float,float]:
+def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float, dis_cam_center_to_center_in:float = 5) -> tuple[float,float]:
     """Return horizontal-plane range in inches and bearing in radians from the cameras' midpoint.
 
     Inputs are angles in radians measured from a shared forward direction:
@@ -68,7 +68,7 @@ def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float)
 
     Does NOT raise errors (stopping the program), just returns 0,0 if there are errors
 
-    Assumes cameras are 4 inches apart with parallel forward axes.
+    Assumes cameras are X inches apart with parallel forward axes.
     Returns the range in inches and the angle in radians to the object wrt the center of the camera line
     """
     dis_between_cameras_in = 4.0
@@ -92,7 +92,7 @@ def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float)
         return 0.0 , 0.0
 
     forward_in = dis_between_cameras_in / disparity
-    sideways_in = forward_in * (tan_left + tan_right) / 2.0
+    sideways_in = forward_in * (tan_left + tan_right) / (dis_cam_center_to_center_in/2)
 
     dis_in = math.hypot(sideways_in, forward_in)
     bearing_rad = math.atan2(sideways_in, forward_in)
