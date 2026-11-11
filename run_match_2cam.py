@@ -1,7 +1,7 @@
 import cv2
 from picamera2 import Picamera2 #type: ignore
 from tam_binocular import get_left_right_frames, setup_left_right_cams, CAM_LEFT, CAM_RIGHT, closeout_left_right_cams
-from tam_frame import show_frame, concat_frames, get_field_frame
+from tam_frame import show_frame, concat_frames, get_field_frame, show_frame_in_loop
 from run_match_from_video import match_two_cam_frame
 from tam_hsv import load_search_dict_from_csv
 from tam_decide import get_init_fieldstate
@@ -21,12 +21,18 @@ def run_2cam():
         frame_left = frame_dict[CAM_LEFT]
         frame_right = frame_dict[CAM_RIGHT]
 
-        match_two_cam_frame(
+        frame, fieldstate = match_two_cam_frame(
             frame_cam_left=frame_left, 
             frame_cam_right=frame_right, 
             frame_field=frame_field.copy(),
             prev_fieldstate=prev_fieldstate,
             search_dict=search_dict)
+
+
+        prev_fieldstate = fieldstate
+
+        if show_frame_in_loop(frame) == False:
+            break
 
 
 
