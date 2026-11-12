@@ -45,7 +45,8 @@ def main():
 
         match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
 
-    demo_one_frame()
+    #demo_one_frame()
+    demo_video()
 
 
 

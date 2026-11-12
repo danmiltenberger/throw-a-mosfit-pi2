@@ -7,11 +7,6 @@ from tam_lcd import write_lcd_lines
 from tam_constants import (
     CAMERA_CAPTURE_X, 
     CAMERA_CAPTURE_Y,
-    START_KICK_PIN,
-    START_MATCH_PIN,
-    CHANGE_GOAL_PIN,
-    CHANGE_TEAM_PIN,
-    END_GAME_PIN,
     match_settings,
     BUTTON_STATUS,
     OUR_LEFT_GOAL,
@@ -20,8 +15,10 @@ from tam_constants import (
     OUR_TEAM_COLOR,
     TEAM_BLUE,
     TEAM_YELLOW,
-    
 )
+
+from tam_pins import *
+
 from tam_buttons import (
     get_button_status_str,
     get_button_status,

@@ -12,16 +12,13 @@ from tam_constants import (
     TEAM_YELLOW,
     HEADER_ROW,
     HEADER_WAITING,
-    START_MATCH_PIN,
-    START_KICK_PIN,
-    CHANGE_GOAL_PIN,
-    CHANGE_TEAM_PIN,
-    END_GAME_PIN
 )
 
+from tam_pins import *
 
 
-def get_button_status() -> dict:
+
+def get_button_status() -> dict[int, bool]:
     button_status: dict = {
         START_MATCH_PIN: False,
         START_KICK_PIN: False,

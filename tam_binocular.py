@@ -1,5 +1,5 @@
 import numpy as np
-from picamera2 import Picamera2
+from picamera2 import Picamera2 # type: ignore
 from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y, CAMERA_CAPTURE_FPS
 
 
@@ -47,19 +47,13 @@ def closeout_left_right_cams(left_cam : Picamera2, right_cam : Picamera2):
 
 
 
-def get_left_right_frames(cam_left : Picamera2, cam_right : Picamera2) -> dict[str, np.ndarray]:
-    '''from the instances, return a dict of CAM_LEFT : left frame and CAM_RIGHT : right frame'''
+def get_left_right_frames(cam_left : Picamera2, cam_right : Picamera2) -> tuple[np.ndarray, np.ndarray]:
+    '''from the instances, return a frame left and frame right'''
 
     frame_left = cam_left.capture_array()
     frame_right = cam_right.capture_array()
 
-
-    return_dict = {
-        CAM_LEFT : frame_left,
-        CAM_RIGHT : frame_right
-    }
-
-    return return_dict
+    return frame_left, frame_right
 
 
 

@@ -60,6 +60,20 @@ class Detection:
 
 
 
+@dataclass
+class Settings:
+    '''wrapper for the settings that affect how our match is run'''
+
+    our_team_is_yellow : bool = True
+    west_goalpost_is_green : bool = True
+
+    search_list = [
+        BALL_RED,
+        HAT_BLUE,
+        HAT_YELLOW,
+        HAT_FUCHSIA,
+        HAT_GREEN
+    ]
 
 
 @dataclass
