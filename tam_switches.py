@@ -15,7 +15,7 @@ switch_pin_recording = 6
 import RPi.GPIO as GPIO          #Import GPIO library
 import time                      #Import time library
 
-GPIO.setmode(GPIO.BOARD)         #Set GPIO pin numbering
+GPIO.setmode(GPIO.BCM)
 
 GPIO.setup(switch_pin_team_color, GPIO.IN, pull_up_down=GPIO.PUD_UP) #Enable input and pull up resistors
 GPIO.setup(switch_pin_goal_color, GPIO.IN, pull_up_down=GPIO.PUD_UP) #Enable input and pull up resistors
