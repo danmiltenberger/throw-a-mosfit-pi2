@@ -4,7 +4,7 @@ from tam_frame import load_video_as_list_of_frames, get_field_frame, concat_fram
 from tam_hsv import load_search_dict_from_csv
 from tam_vision import get_list_detections, get_hsv_frame
 from tam_draw import draw_detection_list_to_camera_frame, add_text_top, draw_two_cams_to_one, draw_fieldstate, get_lcd_frame_fieldstate
-from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate, blend_fieldstates
+from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate, blend_fieldstates, get_bot_command
 from tam_classes import FieldState
 from tam_colors import BLUE
 
@@ -12,33 +12,40 @@ from tam_colors import BLUE
 def main():
 
     # demonstration of one frame
-    frame_left = load_image_as_frame("hsv_photos/all_in_one_left.png")
-    frame_right = load_image_as_frame("hsv_photos/all_in_one_right.png")
-    frame_field = get_field_frame(left_is_green= True)
+    def demo_one_frame():
+        frame_left = load_image_as_frame("hsv_photos/all_in_one_left.png")
+        frame_right = load_image_as_frame("hsv_photos/all_in_one_right.png")
+        frame_field = get_field_frame(left_is_green= True)
 
-    search_dict = load_search_dict_from_csv()
-    prev_fieldstate = get_init_fieldstate()
+        search_dict = load_search_dict_from_csv()
+        prev_fieldstate = get_init_fieldstate()
 
 
-    # frame, fieldstate = match_two_cam_frame(
-    #     prev_fieldstate= prev_fieldstate,
-    #     search_dict= search_dict,
-    #     frame_field= frame_field,
-    #     frame_cam_right= frame_right,
-    #     frame_cam_left= frame_left,
-    # )
+        frame_cam, frame_field, fieldstate = match_two_cam_frame(
+            prev_fieldstate= prev_fieldstate,
+            search_dict= search_dict,
+            frame_field= frame_field,
+            frame_cam_right= frame_right,
+            frame_cam_left= frame_left,
+        )
 
-    # print(fieldstate)
-    # show_frame(frame)
+        frame_lcd = get_lcd_frame_fieldstate(fieldstate)
 
-    # demonstration of video
-    # yea I know these are mislabeled, but I think they were just saved the wrong way  
-    right_cam_vid = "training_data/1280_720_2026_11_5_13_28_LEFT.mp4"
-    left_cam_vid = "training_data/1280_720_2026_11_5_13_28_RIGHT.mp4"
+        frame = concat_frames(frame_cam, frame_lcd, "DOWN")
+        frame = concat_frames(frame, frame_field)
 
-    match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
+        frame = resize_frame(frame, 0.6)
+        show_frame(frame)
 
-    pass
+    def demo_video():
+        # demonstration of video
+        # yea I know these are mislabeled, but I think they were just saved the wrong way  
+        right_cam_vid = "training_data/1280_720_2026_11_5_13_28_LEFT.mp4"
+        left_cam_vid = "training_data/1280_720_2026_11_5_13_28_RIGHT.mp4"
+
+        match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
+
+    demo_one_frame()
 
 
 
@@ -79,6 +86,11 @@ def match_two_cam(left_cam_vid_path: str, right_cam_vid_path: str, window_resize
         # average the previous fieldstates to remove noise
         list_fs.append(fieldstate)
         prev_fieldstate = blend_fieldstates(list_fs, num_to_blend=60)
+
+        command, status_str = get_bot_command(prev_fieldstate)
+        prev_fieldstate.com_str = command.com_str
+        prev_fieldstate.com_dur_sec = command.dur_sec
+        prev_fieldstate.status_str = status_str
 
         # get the lcd screen frame
         lcd_frame = get_lcd_frame_fieldstate(prev_fieldstate)

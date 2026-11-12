@@ -1462,28 +1462,31 @@ def get_lcd_frame(list_lines: list[str]) -> np.ndarray:
     return frame
 
 
-def get_lcd_frame_fieldstate(fieldstate: FieldState) -> np.ndarray:
-    '''get the lcd frame with text from a given fieldstate'''
+def get_lcd_lines(fieldstate : FieldState) -> list[str]:
+    ball_pos = "???"
 
-    status_ball = "???"
     # or X,Y so either way 3 char
     if fieldstate.ball_is_seen:
-        status_ball = f"{round(fieldstate.ball_pos_in.x)},{round(fieldstate.ball_pos_in.y)}"
+        ball_pos = f"{round(fieldstate.ball_pos_in.x)},{round(fieldstate.ball_pos_in.y)}"
 
-    status_opponent ="???"
+    their_bot_pos ="???"
     if fieldstate.their_bot_is_seen:
-        status_opponent = f"{round(fieldstate.their_bot_pos_in.x)},{round(fieldstate.their_bot_pos_in.y)}"
+        their_bot_pos = f"{round(fieldstate.their_bot_pos_in.x)},{round(fieldstate.their_bot_pos_in.y)}"
 
-    status_us = f"{round(fieldstate.our_bot_pos_in.x)},{round(fieldstate.our_bot_pos_in.y)}"
-    command_us = "NO COMMAND"
+    our_bot_pos = f"{round(fieldstate.our_bot_pos_in.x)},{round(fieldstate.our_bot_pos_in.y)}"        # (0.0,0.0)
+    our_bot_command = fieldstate.com_str + str(round(fieldstate.com_dur_sec,1))     # something like W1.1
 
-    row1 = f"us {status_us}"
-    row2 = f"bl {status_ball}"
-    row3 = f"op {status_opponent}"
-    row4 = f"cm {command_us}"
+    row1 = fieldstate.status_str
+    row2 = f"us {our_bot_pos} op {their_bot_pos}"
+    row3 = f"ball {ball_pos}"
+    row4 = f"com {our_bot_command}"
+
+    return [row1, row2, row3, row4]
 
 
-    list_lines = [row1, row2, row3, row4]
+def get_lcd_frame_fieldstate(fieldstate: FieldState) -> np.ndarray:
+    '''get the lcd frame with text from a given fieldstate'''
+    list_lines = get_lcd_lines(fieldstate)
 
     lcd_frame = get_lcd_frame(list_lines= list_lines)
     return lcd_frame

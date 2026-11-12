@@ -106,6 +106,11 @@ class FieldState:
     our_bot_target_rad : float = 0
     angle_to_target : float = 0
 
+    # defining what goal the bot is trying to do, and the command sent to the arduino to do it
+    status_str : str = "INITIAL"
+    com_str : str ="_"
+    com_dur_sec : float = 0
+
     def to_dict(self) -> dict:
         field_state_dict = {
             TIMESTEP: self.timestep,

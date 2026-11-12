@@ -27,7 +27,7 @@ from tam_constants import (
 )
 
 
-def get_init_fieldstate(match_settings: dict = {}) -> FieldState:
+def get_init_fieldstate() -> FieldState:
     fieldstate = FieldState()
 
     fieldstate.our_bot_pos_in = FIELD_GOALBOX_CENTER_BOTTOM
