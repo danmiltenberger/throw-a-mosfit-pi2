@@ -3,7 +3,7 @@ import cv2
 from tam_frame import load_video_as_list_of_frames, get_field_frame, concat_frames, resize_frame, show_frame_in_loop, show_frame, load_image_as_frame
 from tam_hsv import load_search_dict_from_csv
 from tam_vision import get_list_detections, get_hsv_frame
-from tam_draw import draw_detection_list_to_camera_frame, add_text_top, draw_two_cams_to_one, draw_fieldstate, draw_angle_lines_on_camera_frame
+from tam_draw import draw_detection_list_to_camera_frame, add_text_top, draw_two_cams_to_one, draw_fieldstate, get_lcd_frame_fieldstate
 from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate, blend_fieldstates
 from tam_classes import FieldState
 from tam_colors import BLUE
@@ -73,21 +73,24 @@ def match_two_cam(left_cam_vid_path: str, right_cam_vid_path: str, window_resize
         frame_cam_left = frame_list_left[i]
         frame_cam_right = frame_list_right[i]
 
-
-        frame, fieldstate = match_two_cam_frame(frame_cam_left, frame_cam_right, frame_field, search_dict, prev_fieldstate)
+        # get the frame and fieldstate from both cam frames
+        frame_cam, frame_field, fieldstate = match_two_cam_frame(frame_cam_left, frame_cam_right, frame_field, search_dict, prev_fieldstate)
 
         # average the previous fieldstates to remove noise
         list_fs.append(fieldstate)
         prev_fieldstate = blend_fieldstates(list_fs, num_to_blend=60)
 
+        # get the lcd screen frame
+        lcd_frame = get_lcd_frame_fieldstate(prev_fieldstate)
 
         # vid duration is frames / frames per sec
         duration_sec = i / fps
         frame_label = f"frame {i}/{min_list_frames} at {fps}fps sec:{round(duration_sec,1)} "
-        frame = add_text_top(frame, frame_label)
+        frame_cam = add_text_top(frame_cam, frame_label)
 
-        
-
+        # package up frames
+        frame = concat_frames(frame_cam, lcd_frame, "DOWN")
+        frame = concat_frames(frame, frame_field, "RIGHT")
         frame = resize_frame(frame, window_resize_mult)
         frame_to_show_at_end = frame
 
@@ -103,7 +106,7 @@ def match_two_cam_frame(
         frame_cam_right: np.ndarray, 
         frame_field: np.ndarray, 
         search_dict: dict, 
-        prev_fieldstate: FieldState) -> tuple[np.ndarray, FieldState]:
+        prev_fieldstate: FieldState) -> tuple[np.ndarray, np.ndarray, FieldState]:
     '''run a match from a single left and right frame, return an annotated frame and fieldstate'''
     
     # search the camera's for detections
@@ -122,10 +125,9 @@ def match_two_cam_frame(
 
     # draw the fieldstate to the field
     frame_field = draw_fieldstate(frame_field, fieldstate, draw_arrows=True)
-
     frame = concat_frames(frame_cam_left, frame_field)
 
-    return frame, fieldstate
+    return frame_cam_left, frame_field, fieldstate
 
 
 
