@@ -5,6 +5,7 @@ from tam_frame import show_frame, concat_frames, get_field_frame, show_frame_in_
 from run_match_from_video import match_two_cam_frame
 from tam_hsv import load_search_dict_from_csv
 from tam_decide import get_init_fieldstate
+from tam_draw import get_lcd_frame_fieldstate
 
 
 def run_2cam():
@@ -21,15 +22,21 @@ def run_2cam():
         frame_left = frame_dict[CAM_LEFT]
         frame_right = frame_dict[CAM_RIGHT]
 
-        frame, fieldstate = match_two_cam_frame(
+        frame_cam, frame_field, fieldstate = match_two_cam_frame(
             frame_cam_left=frame_left, 
             frame_cam_right=frame_right, 
             frame_field=frame_field.copy(),
             prev_fieldstate=prev_fieldstate,
             search_dict=search_dict)
 
-
+    
         prev_fieldstate = fieldstate
+
+        frame_lcd = get_lcd_frame_fieldstate(fieldstate)
+
+        # combine so top left is camera, bottom left is lcd, right is field
+        frame = concat_frames(frame_cam, frame_lcd, "DOWN")
+        frame = concat_frames(frame, frame_field)
 
         if show_frame_in_loop(frame) == False:
             break

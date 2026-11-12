@@ -632,6 +632,7 @@ def try_to_merge_detections(
     # if neither are in frame, return the left just so the program keeps going
     else:
         # print("unable to merge, neither in frame, returning left")
+        detect_left.in_frame = False
         return detect_left
 
 

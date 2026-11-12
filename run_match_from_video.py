@@ -138,7 +138,6 @@ def match_two_cam_frame(
 
     # draw the fieldstate to the field
     frame_field = draw_fieldstate(frame_field, fieldstate, draw_arrows=True)
-    frame = concat_frames(frame_cam_left, frame_field)
 
     return frame_cam_left, frame_field, fieldstate
 

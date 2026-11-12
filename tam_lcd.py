@@ -226,6 +226,17 @@ def write_lcd_lines(lines: list[str]) -> None:
         mylcd.lcd_display_string(text.ljust(LCD_COLUMNS), row)
 
 
+if __name__ == "__main__":
 
+   ip_address = get_ip_address()
+
+   list_lines = [
+      f"IP: {ip_address}",
+      "line2",
+      "line3",
+      "line4",
+
+   ]
+   write_lcd_lines(list_lines)
 
 
