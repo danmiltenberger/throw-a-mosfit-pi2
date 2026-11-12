@@ -237,8 +237,8 @@ if __name__ == "__main__":
 
    list_lines = [
       "RPI5 Throw a Mosfit"
-      f"IP: {ip_address}",
-      f"Time: {time_now}",
+      f"IP {ip_address}",
+      f"T {time_now}",
       "let's get to work!",
    ]
 
