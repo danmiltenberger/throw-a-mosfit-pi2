@@ -1,36 +1,41 @@
-
-
-## Switch labels
-# team_color
-# goal_color
-# match_type
-# recording
+import RPi.GPIO as GPIO #type: ignore
+import time
 
 switch_pin_team_color = 26
 switch_pin_goal_color = 19
 switch_pin_match_type = 13
 switch_pin_recording = 6
 
-
-import RPi.GPIO as GPIO          #Import GPIO library
-import time                      #Import time library
-
-GPIO.setmode(GPIO.BCM)
-
-GPIO.setup(switch_pin_team_color, GPIO.IN, pull_up_down=GPIO.PUD_UP) #Enable input and pull up resistors
-GPIO.setup(switch_pin_goal_color, GPIO.IN, pull_up_down=GPIO.PUD_UP) #Enable input and pull up resistors
-GPIO.setup(switch_pin_match_type, GPIO.IN, pull_up_down=GPIO.PUD_UP) #Enable input and pull up resistors
-GPIO.setup(switch_pin_recording, GPIO.IN, pull_up_down=GPIO.PUD_UP) #Enable input and pull up resistors
+SWITCHES = {
+    "Team Color": switch_pin_team_color,
+    "Goal Color": switch_pin_goal_color,
+    "Match Type": switch_pin_match_type,
+    "Recording":  switch_pin_recording,
+}
 
 
-while True:
-
-    switch_team_color_on = GPIO.input(switch_pin_team_color)
-    switch_goal_color_on = GPIO.input(switch_pin_goal_color)
-    switch_match_type_on = GPIO.input(switch_pin_match_type)
-    switch_recording_on = GPIO.input(switch_pin_recording)
-
-    status_str = f"team: {switch_team_color_on} goal: {switch_goal_color_on} match:{switch_match_type_on} rec:{switch_recording_on}"
+def setup_switches():
+    GPIO.setmode(GPIO.BCM)
+    for pin in SWITCHES.values():
+        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 
-    print(status_str)
+def print_switch_status():
+    """Read and print the state of each switch once."""
+    print("-" * 30)
+    for name, pin in SWITCHES.items():
+        # With pull-up wiring: LOW (0) = switch closed = ON
+        state = "ON" if GPIO.input(pin) == GPIO.LOW else "OFF"
+        print(f"{name:<12} (GPIO {pin:>2}): {state}")
+
+
+if __name__ == "__main__":
+    setup_switches()
+    try:
+        while True:
+            print_switch_status()
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        print("\nExiting.")
+    finally:
+        GPIO.cleanup()
