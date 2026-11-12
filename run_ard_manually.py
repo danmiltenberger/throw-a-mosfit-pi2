@@ -1,6 +1,6 @@
 import re
 import time
-import serial
+import serial #type: ignore
 
 PORT = "/dev/ttyACM1"   # Linux Mega is usually /dev/ttyACM0 (or /dev/ttyUSB0)
 BAUD = 115200           # must match Serial.begin() in the sketch
