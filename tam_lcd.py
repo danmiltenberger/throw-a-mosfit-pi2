@@ -245,4 +245,26 @@ if __name__ == "__main__":
 
    input()
 
+   write_lcd_lines([])
 
+
+'''
+[Unit]
+Description=Switch status script
+After=multi-user.target
+
+[Service]
+Type=simple
+User=tam
+WorkingDirectory=/home/tam/throw-a-mosfit-pi2
+ExecStart=/usr/bin/python3 -u /home/tam/throw-a-mosfit-pi2/tam_lcd.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+
+'''
