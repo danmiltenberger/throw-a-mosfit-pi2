@@ -1,3 +1,6 @@
+from tam_save_load import get_iso_str
+
+
 ### library for all LCD functions including actual and simulated LCD
 
 
@@ -229,13 +232,14 @@ def write_lcd_lines(lines: list[str]) -> None:
 if __name__ == "__main__":
 
    ip_address = get_ip_address()
+   time_now = get_iso_str(include_sec=True)
+
 
    list_lines = [
+      "RPI5 Throw a Mosfit"
       f"IP: {ip_address}",
-      "line2",
-      "line3",
-      "line4",
-
+      f"Time: {time_now}",
+      "let's get to work!",
    ]
 
    print("writing lines to lcd:")
