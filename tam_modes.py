@@ -1,6 +1,8 @@
 # THIS IS ALL AI AND NEEDS A LOOK THROUGH
 # NOT READY RIGHT NOW
 
+
+
 """
 Simple state machine ("modes") for the soccer bot.
 
@@ -24,10 +26,14 @@ TO ADD A NEW MODE
 import math
 import time
 from enum import Enum, auto
+import numpy as np
 
 from tam_classes import Point, FieldState, BotCommand, get_capture_zone_point
-from tam_commands import BOT_FORWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_KICK
+from tam_commands import BOT_FORWARD, BOT_BACKWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_KICK, BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT, ARM_OUT
 from tam_points import FIELD_GOAL_CENTER_TOP, FIELD_GOALBOX_CENTER_BOTTOM
+from tam_constants import BEARING_EAST, BEARING_NORTH
+from tam_points import FIELD_GOAL_CENTER_BOTTOM
+
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +46,7 @@ class Mode(Enum):
     SHOOT = auto()           # kick, then go back to searching
     HOME = auto()            # go to the position in front of our goal
     DEFEND = auto()          # Stand between play and goal with arms out -> if oppent no longer as ball -> search
-
+    ORBIT_BALL = auto()      # rotate around the ball to get a better angle on the goal
 
 # ---------------------------------------------------------------------------
 # Tuning numbers (all inches / seconds / radians)
@@ -52,6 +58,25 @@ SHOOT_RANGE_IN = 30           # kick when this close to their goal
 CAPTURE_EXIT_EXTRA_IN = 3     # hysteresis: must be this much farther out to "lose" the ball
 SHOOT_COOLDOWN_SEC = 1.0      # time to stay in SHOOT after kicking
 DEFEND_EXIT_FRAMES = 5        # how many frames the opponenet does not have the ball before going after ball
+
+
+DEFEND_LINE_Y_IN = 12         # y of the line we strafe along to
+DEFEND_X_MARGIN_IN = 4        # don't let the guard point get too close to the goalposts
+DEFEND_Y_TOL_IN = 1           # how close to the defend line is "good enough"
+DEFEND_X_TOL_IN = 1           # how close to the guard point is "good enough"
+ARM_TRIGGER_DIST_IN = 12      # if the threat is this close, put arms out
+ARM_COOLDOWN_SEC = 1.0        # don't spam the arms out command     
+GOALPOST_SOUTHWEST = Point(36, 0)
+GOALPOST_SOUTHEAST = Point(60, 0)
+
+ORBIT_RADIUS_IN = 14          # bot center -> ball center while orbiting (capture zone is 10" ahead, +4" clearance)
+ORBIT_RADIUS_TOL_IN = 2
+ORBIT_ANGLE_TOL_RAD = math.radians(15)  # "behind the ball" is good enough within this
+FACE_BALL_TOL_RAD = math.radians(15)
+ORBIT_STRAFE_SEC = 0.3        # strafe is slow, so use longer steps
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +126,8 @@ class Brain:
 def distance(a: Point, b: Point) -> float:
     return math.hypot(b.x - a.x, b.y - a.y)
 
+def wrap_angle(a: float) -> float:
+    return (a + math.pi) % (2 * math.pi) - math.pi
 
 def angle_error_to(fs: FieldState, target: Point) -> float:
     """Signed angle (rad) from our heading to the target. + = target is to the left."""
@@ -108,8 +135,43 @@ def angle_error_to(fs: FieldState, target: Point) -> float:
     target_bearing = math.atan2(target.y - fs.our_bot_pos_in.y, target.x - fs.our_bot_pos_in.x)
     return (target_bearing - fs.our_bot_bearing_rad + math.pi) % (2 * math.pi) - math.pi
 
+def rotate_around_ball(fs: FieldState, goal: Point = FIELD_GOAL_CENTER_TOP) -> tuple[BotCommand, bool]:
+    '''Rotate around the ball to get a better angle on the goal, in a semicircle around the ball
+    (7in diameter). Keeps facing the ball and strafes sideways around it.
+    Returns (command, done). done = True when we're behind the ball, lined up with the goal.'''
 
-def drive_toward(fs: FieldState, target: Point) -> BotCommand:
+    ball = fs.ball_pos_in
+    bot = fs.our_bot_pos_in
+
+    # where we are around the ball, and where we want to be (directly opposite the goal)
+    angle_now = math.atan2(bot.y - ball.y, bot.x - ball.x)
+    angle_want = math.atan2(ball.y - goal.y, ball.x - goal.x)
+    orbit_err = wrap_angle(angle_want - angle_now)   # + = need to go counterclockwise
+
+    # 1. keep facing the ball
+    face_err = angle_error_to(fs, ball)
+    if face_err > FACE_BALL_TOL_RAD:
+        return BotCommand(BOT_ROTATE_LEFT, CMD_DUR_SEC), False
+    if face_err < -FACE_BALL_TOL_RAD:
+        return BotCommand(BOT_ROTATE_RIGHT, CMD_DUR_SEC), False
+
+    # 2. stay on the circle (strafing in a straight line drifts outward)
+    radius_err = distance(bot, ball) - ORBIT_RADIUS_IN
+    if radius_err > ORBIT_RADIUS_TOL_IN:
+        return BotCommand(BOT_FORWARD, CMD_DUR_SEC), False
+    if radius_err < -ORBIT_RADIUS_TOL_IN:
+        return BotCommand(BOT_BACKWARD, CMD_DUR_SEC), False
+
+    # 3. done?
+    if abs(orbit_err) < ORBIT_ANGLE_TOL_RAD:
+        return BotCommand(), True
+
+    # 4. strafe around. Facing the ball: right = counterclockwise around it, left = clockwise
+    if orbit_err > 0:
+        return BotCommand(BOT_STRAFE_RIGHT, ORBIT_STRAFE_SEC), False
+    return BotCommand(BOT_STRAFE_LEFT, ORBIT_STRAFE_SEC), False
+
+def drive_toward(fs: FieldState, target: Point) -> BotCommand: # BOT_FORWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT
     """Turn if we're not pointed at the target, otherwise drive forward."""
 
     err = angle_error_to(fs, target)
@@ -119,7 +181,6 @@ def drive_toward(fs: FieldState, target: Point) -> BotCommand:
         return BotCommand(BOT_ROTATE_RIGHT, CMD_DUR_SEC)
     return BotCommand(BOT_FORWARD, CMD_DUR_SEC)
 
-
 def ball_in_capture_zone(fs: FieldState, extra_radius_in: float = 0) -> bool:
     fs = get_capture_zone_point(fs)
     return distance(fs.ball_pos_in, fs.capture_zone_center) <= fs.our_bot_capture_zone_radius + extra_radius_in
@@ -128,29 +189,37 @@ def ball_in_capture_zone(fs: FieldState, extra_radius_in: float = 0) -> bool:
 # ---------------------------------------------------------------------------
 # 3. The modes. Each one: decide what to do, and decide whether to leave.
 # ---------------------------------------------------------------------------
-def mode_search(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
+def mode_search(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:  #APPROACH_BALL, SEARCH
     # EXIT: we see the ball
     if fs.ball_is_seen:
         return BotCommand(), Mode.APPROACH_BALL
+
+    if fs.ball_is_theirs:
+        return BotCommand(), Mode.HOME
 
     # ACTION: spin in place
     return BotCommand(BOT_ROTATE_LEFT, CMD_DUR_SEC), Mode.SEARCH
 
 
-def mode_approach_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
-    # EXIT: lost the ball for too long
+def mode_approach_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]: #HOME, SEARCH, ORBIT_BALL, DRIBBLE, DRIBBLE, APPROACH_BALL
+    if fs.ball_is_theirs:
+        return BotCommand(), Mode.HOME
+    
     if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
         return BotCommand(), Mode.SEARCH
 
-    # EXIT: ball is in our capture zone
+    # NEW: close to the ball but on the wrong side -> orbit around it
+    near_ball = distance(fs.our_bot_pos_in, fs.ball_pos_in) < ORBIT_RADIUS_IN + 4
+    if near_ball and not lined_up(fs, FIELD_GOAL_CENTER_TOP):
+        return BotCommand(), Mode.ORBIT_BALL
+
     if fs.ball_is_seen and ball_in_capture_zone(fs):
         return BotCommand(), Mode.DRIBBLE
 
-    # ACTION: drive at the last known ball position
     return drive_toward(fs, fs.ball_pos_in), Mode.APPROACH_BALL
 
 
-def mode_dribble(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
+def mode_dribble(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]: #APPROACH_BALL, SHOOT, DRIBBLE
     # EXIT: ball got away (note the bigger radius = hysteresis, prevents flicker)
 
     if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX or (
@@ -169,7 +238,7 @@ def mode_dribble(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     return drive_toward(fs, FIELD_GOAL_CENTER_TOP), Mode.DRIBBLE
 
 
-def mode_shoot(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
+def mode_shoot(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]: #SHOOT, SEARCH, SHOOT
     # ACTION (once): kick
 
     if not brain.has_kicked:
@@ -184,14 +253,21 @@ def mode_shoot(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     return BotCommand(), Mode.SHOOT
 
 
-def mode_home(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
+def mode_home(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]: #HOME, DEFEND, APPROACH_BALL
     # ACTION: go to the front of our goal, then sit there
-    
-    if distance(fs.our_bot_pos_in, FIELD_GOALBOX_CENTER_BOTTOM) > 4:
+    if not fs.ball_is_theirs and distance(fs.our_bot_pos_in, fs.ball_pos_in) <= 4:
+        return BotCommand(), Mode.APPROACH_BALL
+
+    elif distance(fs.our_bot_pos_in, FIELD_GOALBOX_CENTER_BOTTOM) > 4:
         return drive_toward(fs, FIELD_GOALBOX_CENTER_BOTTOM), Mode.HOME
+    
+    elif distance(fs.our_bot_pos_in, FIELD_GOALBOX_CENTER_BOTTOM) <= 4:
+        return BotCommand(), Mode.DEFEND
+    
     return BotCommand(), Mode.HOME
 
-def mode_defend(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
+
+def mode_defend(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]: #SEARCH, DEFEND
     '''Strafe in front of our goal to defend, in between the opponent and our goal.
     If the opponent lost the ball, go back to searching for the ball.'''
 
@@ -228,7 +304,7 @@ def mode_defend(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     if heading_err < -AIM_TOLERANCE_RAD:
         return BotCommand(BOT_ROTATE_RIGHT, CMD_DUR_SEC), Mode.DEFEND
 
-    # ACTION 3: threat is close -> arms out (with cooldown so we don't spam it)
+    # ACTION 3: threat is close -> arms out (with  cooldown so we don't spam it)
     now = time.perf_counter()
     if (distance(fs.our_bot_pos_in, threat) < ARM_TRIGGER_DIST_IN
             and now - brain.arm_last_time > ARM_COOLDOWN_SEC):
@@ -244,7 +320,18 @@ def mode_defend(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
 
     # in position: hold
     return BotCommand(), Mode.DEFEND 
-    
+
+
+def mode_orbit_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
+    if fs.ball_is_theirs:
+        return BotCommand(), Mode.DEFEND
+    if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
+        return BotCommand(), Mode.SEARCH
+
+    command, done = rotate_around_ball(fs, FIELD_GOAL_CENTER_TOP)
+    if done:
+        return BotCommand(), Mode.APPROACH_BALL   # lined up -> approach drives straight in
+    return command, Mode.ORBIT_BALL
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +343,8 @@ MODE_FUNCTIONS = {
     Mode.DRIBBLE: mode_dribble,
     Mode.SHOOT: mode_shoot,
     Mode.HOME: mode_home,
-    Mode.DEFEND: mode_defend,  
+    Mode.DEFEND: mode_defend, 
+    Mode.ORBIT_BALL: mode_orbit_ball, 
 }
 
 
@@ -270,7 +358,7 @@ if __name__ == "__main__":
 
     fs = FieldState()
     fs.our_bot_pos_in = Point(48, 12)
-    fs.our_bot_bearing_rad = BEARING_EAST     # facing away from the ball
+    fs.our_bot_bearing_rad = BEARING_EAST   
     fs.ball_pos_in = Point(48, 72)
 
     brain = Brain()
