@@ -74,7 +74,7 @@ def print_switch_status():
 
     lines = [
         "Testing switches",
-        print_str
+        str(print_str),
     ]
 
     print(print_str)
