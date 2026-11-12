@@ -237,6 +237,12 @@ if __name__ == "__main__":
       "line4",
 
    ]
+
+   print("writing lines to lcd:")
+   for line in list_lines:
+      print(f"\t{line}")
    write_lcd_lines(list_lines)
+
+   input()
 
 
