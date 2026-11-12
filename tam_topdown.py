@@ -8,11 +8,19 @@ FOCAL_LENGTH = 1253.333     # recalc this when able
 
 
 def calc_distance_from_bot(known_width_in: float, percieved_width_px) -> float:
+    '''calculate the distance to an object using the known width and percieved width. Not as good as two sightings but better than nothing'''
 
     try:
         Z = (known_width_in * FOCAL_LENGTH) / percieved_width_px
     except ZeroDivisionError:
         Z = np.inf
+
+    # no sightings should be further than 140 inches since the field is 12ft = 144 in long
+    if Z > 140:
+        Z = 140
+
+
+
     return Z
 
 
@@ -70,9 +78,10 @@ def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float,
 
     Assumes cameras are X inches apart with parallel forward axes.
     Returns the range in inches and the angle in radians to the object wrt the center of the camera line
-    """
-    dis_between_cameras_in = 4.0
 
+    Makes sure that no sighting is further than 140 inches away (long side of the arena is 12ft = 144in)
+
+    """
     for angle in (rad_left, rad_right):
         if not math.isfinite(angle) or not -math.pi / 2 < angle < math.pi / 2:
             
@@ -91,11 +100,14 @@ def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float,
 
         return 0.0 , 0.0
 
-    forward_in = dis_between_cameras_in / disparity
-    sideways_in = forward_in * (tan_left + tan_right) / (dis_cam_center_to_center_in/2)
+    forward_in = dis_cam_center_to_center_in / disparity
+    sideways_in = forward_in * (tan_left + tan_right) / (2)
 
     dis_in = math.hypot(sideways_in, forward_in)
     bearing_rad = math.atan2(sideways_in, forward_in)
+
+    if dis_in > 140:
+        dis_in = 140
 
     return dis_in, bearing_rad
 

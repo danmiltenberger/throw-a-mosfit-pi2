@@ -428,6 +428,7 @@ def draw_notched_rectangle(
 
 
 def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point= FIELD_GOALBOX_CENTER_BOTTOM, bearing_rad: float = BEARING_NORTH, color: tuple[int,int,int]= YELLOW) -> np.ndarray:
+    '''draw a robot (notched rectangle) to the field'''
 
     pos_px = inches_to_screen(pos_in)
 

@@ -4,7 +4,7 @@ from tam_frame import load_video_as_list_of_frames, get_field_frame, concat_fram
 from tam_hsv import load_search_dict_from_csv
 from tam_vision import get_list_detections, get_hsv_frame
 from tam_draw import draw_detection_list_to_camera_frame, add_text_top, draw_two_cams_to_one, draw_fieldstate, draw_angle_lines_on_camera_frame
-from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate
+from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate, blend_fieldstates
 from tam_classes import FieldState
 from tam_colors import BLUE
 
@@ -20,23 +20,23 @@ def main():
     prev_fieldstate = get_init_fieldstate()
 
 
-    frame, fieldstate = match_two_cam_frame(
-        prev_fieldstate= prev_fieldstate,
-        search_dict= search_dict,
-        frame_field= frame_field,
-        frame_cam_right= frame_right,
-        frame_cam_left= frame_left,
-    )
+    # frame, fieldstate = match_two_cam_frame(
+    #     prev_fieldstate= prev_fieldstate,
+    #     search_dict= search_dict,
+    #     frame_field= frame_field,
+    #     frame_cam_right= frame_right,
+    #     frame_cam_left= frame_left,
+    # )
 
-    print(fieldstate)
-    show_frame(frame)
+    # print(fieldstate)
+    # show_frame(frame)
 
     # demonstration of video
     # yea I know these are mislabeled, but I think they were just saved the wrong way  
-    # right_cam_vid = "training_data/1280_720_2026_11_5_13_28_LEFT.mp4"
-    # left_cam_vid = "training_data/1280_720_2026_11_5_13_28_RIGHT.mp4"
+    right_cam_vid = "training_data/1280_720_2026_11_5_13_28_LEFT.mp4"
+    left_cam_vid = "training_data/1280_720_2026_11_5_13_28_RIGHT.mp4"
 
-    # match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
+    match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
 
     pass
 
@@ -62,6 +62,9 @@ def match_two_cam(left_cam_vid_path: str, right_cam_vid_path: str, window_resize
 
     frame_to_show_at_end = frame_field_original
 
+    list_fs = []
+    list_fs.append(prev_fieldstate)
+
     # iterate through the videos
     for i in range(min_list_frames):
 
@@ -72,7 +75,11 @@ def match_two_cam(left_cam_vid_path: str, right_cam_vid_path: str, window_resize
 
 
         frame, fieldstate = match_two_cam_frame(frame_cam_left, frame_cam_right, frame_field, search_dict, prev_fieldstate)
-        prev_fieldstate = fieldstate
+
+        # average the previous fieldstates to remove noise
+        list_fs.append(fieldstate)
+        prev_fieldstate = blend_fieldstates(list_fs, num_to_blend=60)
+
 
         # vid duration is frames / frames per sec
         duration_sec = i / fps
