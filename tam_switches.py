@@ -16,11 +16,19 @@ pin_green = 5
 
 
 
+# SWITCHES = {
+#     "Team Color": switch_pin_team_color,
+#     "Goal Color": switch_pin_goal_color,
+#     "Match Type": switch_pin_match_type,
+#     "Recording":  switch_pin_recording,
+# }
+
 SWITCHES = {
-    "Team Color": switch_pin_team_color,
-    "Goal Color": switch_pin_goal_color,
-    "Match Type": switch_pin_match_type,
-    "Recording":  switch_pin_recording,
+    "green" : pin_green,
+    "yellow" : pin_yellow,
+    "orange" : pin_orange,
+    "red" : pin_red,
+    "brown" : pin_brown,
 }
 
 
@@ -34,6 +42,8 @@ def print_switch_status():
     """Read and print the state of each switch once."""
 
     print_str = ""
+
+    setup_switches()
 
 
     if GPIO.input(pin_green):
