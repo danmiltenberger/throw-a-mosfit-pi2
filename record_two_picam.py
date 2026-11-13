@@ -5,6 +5,8 @@ import cv2
 import numpy as np
 from picamera2 import Picamera2 #type: ignore
 
+from tam_lcd import write_lcd_lines
+
 
 def record_two_picams(
     duration_s: float = 60.0,
@@ -70,9 +72,14 @@ def record_two_picams(
 
         for frame_int in range(frames_to_capture):
 
-            elapsed_sec = sec_per_frame * frame_int
 
+            # print info to the terminal and lcd
+            elapsed_sec = sec_per_frame * frame_int
             print(f"frame {frame_int} / {frames_to_capture}, sec:{round(elapsed_sec,1)}")
+
+            write_lcd_lines(
+                [f"Recording! t+ {round(elapsed_sec,1)}"]
+            )
 
             left_frame = left_cam.capture_array("main")
             right_frame = right_cam.capture_array("main")
@@ -104,6 +111,10 @@ def record_two_picams(
 
 
 if __name__ == "__main__":
+
+
+    print("running record two_picam!")
+    duration = int(input("type seconds to record:"))
 
     print("started recording!")
     left_file, right_file = record_two_picams(
