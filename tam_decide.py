@@ -10,6 +10,7 @@ from tam_classes import (
     BotCommand,
     get_capture_zone_point,
     Detection,
+    CameraState
 )
 from tam_commands import *
 from tam_ourbot import *
@@ -732,3 +733,46 @@ def blend_fieldstates(list_fs: list[FieldState], num_to_blend: int = 10) -> Fiel
         )
 
     return fs_blended
+
+
+def get_botcom_from_cam(cs: CameraState, our_goal_is_green_purple: bool = True) -> BotCommand:
+    '''get command using just what the camera sees. No fancy top down trig whatever'''
+
+    sec_per_rad = 1 / rad_per_sec_rotation
+    sec_per_inch = 1 / in_per_sec_forward
+
+    # default to doing nothing
+    bot_command = BotCommand()
+
+    # if we don't see the ball, look for it
+    if cs.ball_in_frame == False:
+        # turn 45 degrees, for fast programming let's say always always always always turn left.
+        
+        rad_45 = math.radians(45)
+        dur_sec = sec_per_rad * rad_45
+        bot_command.com_str = BOT_ROTATE_LEFT
+        bot_command.dur_sec = dur_sec
+
+    # if we're more than 100 pixels off from facing it, rotate to the ball
+    elif abs(CAMERA_CENTER_X - cs.ball_pos_px.x) > 100:
+        # turn by 10 deg
+        rad_10 = math.radians(10)
+        bot_command.dur_sec = sec_per_rad * rad_10
+
+        # determine direction
+        if CAMERA_CAPTURE_X - cs.ball_pos_px.x > 0:
+            bot_command.com_str = BOT_ROTATE_LEFT
+        else:
+            bot_command.com_str = BOT_ROTATE_RIGHT
+
+    # if we're close enough, drive a little bit toward it
+    else:
+        # move 12 inches toward the ball
+        bot_command.dur_sec = sec_per_inch * 12
+        bot_command.com_str = BOT_FORWARD
+
+    # TODO - once we have the ball, go to the goal
+
+    return bot_command
+
+

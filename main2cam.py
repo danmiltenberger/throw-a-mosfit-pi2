@@ -3,9 +3,9 @@ from tam_pins import END_GAME_PIN, START_KICK_PIN, START_MATCH_PIN, CHANGE_GOAL_
 from tam_binocular import setup_left_right_cams, get_left_right_frames
 from tam_classes import Settings
 from tam_switches import get_switches_status_dict, setup_switches
-from tam_vision import get_list_detections, get_hsv_frame
+from tam_vision import get_list_detections, get_hsv_frame, get_camerastate
 from tam_hsv import load_search_dict_from_csv
-from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate, get_bot_command
+from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate, get_botcom_from_cam
 from tam_arduino import send_command_to_arduino
 from tam_lcd import write_lcd_lines
 from tam_draw import get_lcd_lines
@@ -39,22 +39,13 @@ def main():
 
         # search the camera's for detections
         frame_cam_left_hsv = get_hsv_frame(frameL.copy())
-        frame_cam_right_hsv = get_hsv_frame(frameR.copy())
 
-        list_detections_left = get_list_detections(frame_cam_left_hsv, search_dict)
-        list_detections_right = get_list_detections(frame_cam_right_hsv, search_dict)
+        camerastate_left = get_camerastate(frameL, search_dict)
 
-        dict_detection_merged = merge_list_detections(list_detections_left, list_detections_right)
-        fieldstate = convert_detect_dict_to_fieldstate(dict_detection_merged, prev_fieldstate=prev_fieldstate)
-
-        bot_command, status_str = get_bot_command(fieldstate)
+        bot_command = get_botcom_from_cam(camerastate_left)
 
         # send the command
         send_command_to_arduino(bot_command)
-
-        # write useful information to the LCD
-        lcd_lines = get_lcd_lines(fieldstate)
-        write_lcd_lines(lcd_lines)
 
 
 

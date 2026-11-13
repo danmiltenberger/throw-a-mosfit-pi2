@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 import math
-from tam_classes import FieldState, Point, Detection
+from tam_classes import FieldState, Point, Detection, CameraState
 from tam_constants import (
     BALL_RED,
     HSV_HI,
@@ -37,6 +37,7 @@ from tam_draw import (
     draw_object_to_frame,
 )
 from tam_frame import concat_frames
+from tam_decide import get_detection_dict
 from typing import Sequence
 
 
@@ -454,5 +455,55 @@ def example_vision_full_stack(
     combined_frame = concat_frames(left_col, frame_field, "RIGHT")
 
     return combined_frame
+
+
+def get_camerastate(frame_camera: np.ndarray, search_dict: dict, is_left: bool = True, our_team_is_yellow: bool = True) -> CameraState:
+    '''from the camera frame, return a CameraState, a package of all necessary information from the frame'''
+
+    cs = CameraState()
+    cs.is_left_camera = is_left
+
+    # get detections
+    hsv_frame = get_hsv_frame(frame_camera.copy())
+    list_detections = get_list_detections(hsv_frame, search_dict)
+    dict_detections = get_detection_dict(list_detections)
+
+    # unpack the detections
+    ball_detection = dict_detections[BALL_RED]
+    gpgr_detection = dict_detections[HAT_GREEN]
+    gppr_detection = dict_detections[HAT_FUCHSIA]
+
+    # just in case there are two hats, determine which one is ours
+    if our_team_is_yellow:
+        tbot_detection = dict_detections[HAT_BLUE]
+    else:
+        tbot_detection = dict_detections[HAT_YELLOW]
+
+    # assign detections to CameraState
+    # ball
+    if ball_detection.in_frame:
+        cs.ball_in_frame = True
+        cs.ball_pos_px = ball_detection.camera_pos_px
+        cs.ball_width_px = ball_detection.width_px
+
+    # goalpost green
+    if gpgr_detection.in_frame:
+        cs.gpgr_in_frame = True
+        cs.gpgr_pos_px = gpgr_detection.camera_pos_px
+        cs.gpgr_width_px = gpgr_detection.width_px
+
+    # goalpost purple
+    if gppr_detection.in_frame:
+        cs.gppr_in_frame = True
+        cs.gppr_pos_px = gppr_detection.camera_pos_px
+        cs.gppr_width_px = gppr_detection.width_px
+
+    # their bot
+    if tbot_detection.in_frame:
+        cs.tbot_in_frame = True
+        cs.tbot_pos_px = tbot_detection.camera_pos_px
+        cs.tbot_width_px = tbot_detection.width_px
+
+    return cs
 
 

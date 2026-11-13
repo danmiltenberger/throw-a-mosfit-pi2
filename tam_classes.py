@@ -76,6 +76,38 @@ class Settings:
     ]
 
 
+
+
+@dataclass
+class CameraState:
+    '''a class containing all the information pulled from the camera. EVERYTHING in pixels'''
+
+    is_left_camera : bool = True
+
+    # define what was in frame
+    ball_in_frame : bool = False
+    tbot_in_frame : bool = False    # their bot
+    gpgr_in_frame : bool = False    # goalpost green
+    gppr_in_frame : bool = False    # goalpost purple
+
+    # position of objects in the frame
+    ball_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    tbot_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    gpgr_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    gppr_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+
+    # percieved width of objects in the frame (used for single cam distance detection)
+    ball_width_px : float = 0
+    tbot_width_px : float = 0
+    gpgr_width_px : float = 0
+    gppr_width_px : float = 0
+
+
+
+
+
+
+
 @dataclass
 class FieldState:
     '''a class to contain all the information needed to draw the current state of the field. 
