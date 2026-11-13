@@ -6,21 +6,29 @@ from run_match_from_video import match_two_cam_frame
 from tam_hsv import load_search_dict_from_csv
 from tam_decide import get_init_fieldstate
 from tam_draw import get_lcd_frame_fieldstate
+from tam_switches import setup_switches
 
 
 def run_2cam():
-    print(f"running file {__name__}")
+
+    print("setting up cameras")
     cam_left, cam_right = setup_left_right_cams()
 
+    print("setting up switches")
+    setup_switches()
+
+    print("loading search dict")
     search_dict = load_search_dict_from_csv()
+
+    print("loading field frame")
     frame_field = get_field_frame()
+
+    print("loading init fieldstate")
     prev_fieldstate = get_init_fieldstate()
 
 
     while True:
-        frame_dict = get_left_right_frames(cam_left,cam_right)
-        frame_left = frame_dict[CAM_LEFT]
-        frame_right = frame_dict[CAM_RIGHT]
+        frame_left, frame_right = get_left_right_frames(cam_left,cam_right)
 
         frame_cam, frame_field, fieldstate = match_two_cam_frame(
             frame_cam_left=frame_left, 
@@ -29,7 +37,7 @@ def run_2cam():
             prev_fieldstate=prev_fieldstate,
             search_dict=search_dict)
 
-    
+
         prev_fieldstate = fieldstate
 
         frame_lcd = get_lcd_frame_fieldstate(fieldstate)
@@ -42,26 +50,6 @@ def run_2cam():
             break
 
 
-
-
-
-def show_two_cam(left_cam: Picamera2, right_cam: Picamera2):
-
-    while True:
-        frames_dict =  get_left_right_frames(cam_left= left_cam, cam_right=right_cam)
-
-        frame_left = frames_dict[CAM_LEFT]
-        frame_right = frames_dict[CAM_RIGHT]
-
-        left_right = concat_frames(frame_left, frame_right)
-
-        cv2.imshow("left_right", left_right)
-
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-
-
-    pass
 
 
 if __name__ == "__main__":

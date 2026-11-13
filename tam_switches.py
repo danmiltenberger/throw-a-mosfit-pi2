@@ -1,17 +1,24 @@
 import RPi.GPIO as GPIO #type: ignore
 import time
+from tam_lcd import write_lcd_lines
+from dataclasses import dataclass
 
-switch_pin_team_color = 26
-switch_pin_goal_color = 19
-switch_pin_match_type = 13
-switch_pin_recording = 6
+# color | GPIO pin
+pin_brown = 26
+pin_red = 19
+pin_orange = 13
+pin_yellow = 6
+pin_green = 5
+
 
 SWITCHES = {
-    "Team Color": switch_pin_team_color,
-    "Goal Color": switch_pin_goal_color,
-    "Match Type": switch_pin_match_type,
-    "Recording":  switch_pin_recording,
+    "toggle_team" : pin_green,
+    "toggle_goal" : pin_yellow,
+    "toggle_match_type" : pin_orange,
+    "toggle_recording" : pin_red,
+    "toggle_arduino_commands" : pin_brown,
 }
+
 
 
 def setup_switches():
@@ -20,13 +27,71 @@ def setup_switches():
         GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 
+
+def get_switch_status(switch_name) -> bool:
+    '''check the status of a switch given the key of the SWITCHES dictionary'''
+    switch_pin = SWITCHES[switch_name]
+
+    if GPIO.input(switch_pin):
+        return True
+    else:
+        return False
+
+
+def get_switches_status_dict() -> dict[str, bool]:
+    '''return a dict of key = switch name ie 'toggle_team' and value True or False'''
+    switch_dict = {}
+
+    for key in SWITCHES.keys():
+        switch_dict[key] = get_switch_status(key)
+
+    return switch_dict
+
+
+
 def print_switch_status():
     """Read and print the state of each switch once."""
-    print("-" * 30)
-    for name, pin in SWITCHES.items():
-        # With pull-up wiring: LOW (0) = switch closed = ON
-        state = "ON" if GPIO.input(pin) == GPIO.LOW else "OFF"
-        print(f"{name:<12} (GPIO {pin:>2}): {state}")
+
+    print_str = ""
+
+    setup_switches()
+
+
+    if GPIO.input(pin_green):
+        print_str += "g1"
+    else:
+        print_str += "g0"
+
+    if GPIO.input(pin_yellow):
+        print_str += "y1"
+    else:
+        print_str += "y0"
+
+    if GPIO.input(pin_orange):
+        print_str += "o1"
+    else:
+        print_str += "o0"
+
+
+    if GPIO.input(pin_red):
+        print_str += "r1"
+    else:
+        print_str += "r0"
+
+    if GPIO.input(pin_brown):
+        print_str += "b1"
+    else:
+        print_str += "b0"
+
+    lines = [
+        "Testing switches",
+        str(print_str),
+    ]
+
+    print(print_str)
+    write_lcd_lines(lines)
+
+
 
 
 if __name__ == "__main__":

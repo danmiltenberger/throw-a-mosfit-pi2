@@ -27,14 +27,15 @@ from tam_constants import (
 )
 
 
-def get_init_fieldstate() -> FieldState:
+def get_init_fieldstate(is_penalty_kick: bool = False) -> FieldState:
     fieldstate = FieldState()
 
     fieldstate.our_bot_pos_in = FIELD_GOALBOX_CENTER_BOTTOM
     fieldstate.our_bot_bearing_rad = BEARING_NORTH
 
-    fieldstate.their_bot_pos_in = FIELD_GOAL_CENTER_TOP
-    fieldstate.their_bot_bearing_rad = BEARING_SOUTH
+    if not is_penalty_kick:
+        fieldstate.their_bot_pos_in = FIELD_GOAL_CENTER_TOP
+        fieldstate.their_bot_bearing_rad = BEARING_SOUTH
 
     fieldstate.ball_pos_in = FIELD_CENTER
 
