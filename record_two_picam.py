@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     print("started recording!")
     left_file, right_file = record_two_picams(
-        duration_s=60,
+        duration_s=duration,
         resolution=(1280, 720),
         fps=30,
         left_camera_id=0,
