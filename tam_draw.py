@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict, BotCommand
+from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict, BotCommand, CameraState
 import math
 from tam_colors import *
 from tam_constants import *
@@ -260,7 +260,13 @@ def draw_top_down_arrows(
     return field_frame
 
 
-def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK, is_in_inches: bool = False)-> np.ndarray:
+def draw_arrow_point_to_point(
+        frame: np.ndarray, 
+        start: Point, 
+        end: Point, 
+        color: tuple[int,int,int]= BLACK, 
+        is_in_inches: bool = False,
+        label_lines : list[str] = [])-> np.ndarray:
 
     if is_in_inches:
         start = inches_to_screen(start)
@@ -275,6 +281,17 @@ def draw_arrow_point_to_point(frame: np.ndarray, start: Point, end: Point, color
         line_type=cv2.LINE_AA,
         tipLength=0.08,
     )
+
+    if len(label_lines) != 0:
+        midpoint = Point(
+            x = 0.5*(start.x + end.x),
+            y = 0.5*(start.y + end.y),
+        )
+        frame = add_text_left_of_point(
+            center_left= midpoint,
+            lines= label_lines,
+            frame= frame
+        )
 
     return frame
 
@@ -1318,7 +1335,7 @@ def draw_detection_left_right_to_frame_left(
     # if only the left sees it, draw the arrow from bottom left third to detection
     elif (detection_left.in_frame == True) and (detection_right.in_frame == False):
         frame_camera_left = draw_detection_to_camera_frame(frame_camera_left, detection_left, draw_arrow= False)
-        
+
         if draw_arrows:
             frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
 
@@ -1490,3 +1507,99 @@ def get_lcd_frame_fieldstate(fieldstate: FieldState) -> np.ndarray:
 
     lcd_frame = get_lcd_frame(list_lines= list_lines)
     return lcd_frame
+
+
+def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is_yellow: bool = True, our_left_is_green: bool = True) -> np.ndarray:
+    '''from the CameraState, draw information to the frame'''
+
+    if cs.ball_in_frame:
+        frame_cam = draw_circle_to_frame(
+            center= cs.ball_pos_px,
+            color= RED,
+            frame= frame_cam,
+            radius= int(cs.ball_width_px / 2)
+        )
+
+    if cs.gpgr_in_frame:
+        frame_cam = draw_circle_to_frame(
+            frame= frame_cam,
+            center= cs.gpgr_pos_px,
+            radius= int(cs.gpgr_width_px/2),
+            color= GREEN
+        )
+
+        rad = calc_angle_from_screen_center(cs.gpgr_pos_px)
+
+        frame_cam = add_text_left_of_point(
+            frame_cam, 
+            [str(round(math.degrees(rad),1)) + "deg"],
+            center_left= cs.gpgr_pos_px
+        )
+
+    if cs.gppr_in_frame:
+        frame_cam = draw_circle_to_frame(
+            frame= frame_cam,
+            center= cs.gppr_pos_px,
+            radius= int(cs.gppr_width_px/2),
+            color= FUCHSIA
+        )
+
+        rad = calc_angle_from_screen_center(cs.gppr_pos_px)
+
+        frame_cam = add_text_left_of_point(
+            frame_cam, 
+            [str(round(math.degrees(rad),1)) + "deg"],
+            center_left= cs.gppr_pos_px
+        )
+
+    opponent_color = BLUE if our_team_is_yellow else YELLOW
+
+    if cs.tbot_in_frame:
+        frame_cam = draw_circle_to_frame(
+            frame=frame_cam,
+            center= cs.tbot_pos_px,
+            radius= int(cs.tbot_width_px/2),
+            color= opponent_color
+        )
+
+    # draw a line from goalpost to goalpost if possible
+    if cs.gppr_in_frame and cs.gpgr_in_frame:
+        frame_cam = draw_line_point_to_point(
+            color= WHITE,
+            start= cs.gppr_pos_px,
+            end= cs.gpgr_pos_px,
+            frame= frame_cam
+        )
+
+        midpoint = Point(
+            x= 0.5 * (cs.gppr_pos_px.x + cs.gpgr_pos_px.x),
+            y= 0.5 * (cs.gppr_pos_px.y + cs.gpgr_pos_px.y),
+        )
+
+        # if green is more left than purple
+        if cs.gpgr_pos_px.x < cs.gppr_pos_px.x:
+            label = "GREEN-PURPLE"
+        else:
+            label = "PURPLE_GREEN"
+
+        if our_left_is_green:
+            if label == "GREEN-PURPLE":
+                subtitle = "OPPONENT GOAL"
+            else:
+                subtitle = "OUR GOAL"
+        else:
+            if label == "GREEN-PURPLE":
+                subtitle = "OUR GOAL"
+            else:
+                subtitle = "OPPONENT GOAL"
+        
+        frame_cam = add_text_left_of_point(
+            center_left= midpoint,
+            color= BLACK,
+            frame= frame_cam,
+            lines= [label, subtitle]
+        )
+
+
+    return frame_cam
+    

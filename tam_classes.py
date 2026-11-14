@@ -205,3 +205,7 @@ def get_capture_zone_point(state: FieldState) -> FieldState:
 class BotCommand:
     com_str : str = "NO_COMMAND"
     dur_sec : float = 0
+
+    def __str__(self) -> str:
+        return self.com_str + str(round(self.dur_sec,1))
+

@@ -2,7 +2,7 @@ import cv2
 from picamera2 import Picamera2 #type: ignore
 from tam_binocular import get_left_right_frames, setup_left_right_cams, CAM_LEFT, CAM_RIGHT, closeout_left_right_cams
 from tam_frame import show_frame, concat_frames, get_field_frame, show_frame_in_loop
-from run_match_from_video import match_two_cam_frame
+from example_match_from2vid import match_two_cam_frame
 from tam_hsv import load_search_dict_from_csv
 from tam_decide import get_init_fieldstate
 from tam_draw import get_lcd_frame_fieldstate

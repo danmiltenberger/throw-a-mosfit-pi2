@@ -37,6 +37,8 @@ def main():
         frame = resize_frame(frame, 0.6)
         show_frame(frame)
 
+    
+
     def demo_video():
         # demonstration of video
         # yea I know these are mislabeled, but I think they were just saved the wrong way  
@@ -45,13 +47,8 @@ def main():
 
         match_two_cam(left_cam_vid_path= left_cam_vid, right_cam_vid_path= right_cam_vid)
 
-    #demo_one_frame()
-    demo_video()
-
-
-
-
-
+    demo_one_frame()
+    #demo_video()
 
 
 def match_two_cam(left_cam_vid_path: str, right_cam_vid_path: str, window_resize_mult : float = 0.6, fps: int = 30):

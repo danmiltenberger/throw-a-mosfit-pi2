@@ -8,17 +8,18 @@ from tam_hsv import load_search_dict_from_csv
 from tam_decide import merge_list_detections, convert_detect_dict_to_fieldstate, get_init_fieldstate, get_botcom_from_cam
 from tam_arduino import send_command_to_arduino
 from tam_lcd import write_lcd_lines
-from tam_draw import get_lcd_lines
+from tam_draw import draw_camerastate_to_cam
+from tam_frame import show_frame_in_loop
 
 def main():
+
+    debugging : bool = True
 
     # setup switches
     setup_switches()
 
     # setup cameras
     camL, camR = setup_left_right_cams()
-
-    # setup lcd
 
     # load the search dict
     search_dict = load_search_dict_from_csv()
@@ -46,6 +47,12 @@ def main():
 
         # send the command
         send_command_to_arduino(bot_command)
+
+        if debugging:
+
+            frameL = draw_camerastate_to_cam(frameL, camerastate_left)
+            if show_frame_in_loop(frameL) == False:
+                break
 
 
 
