@@ -4,7 +4,7 @@ from tam_vision import get_camerastate
 from tam_hsv import load_search_dict_from_csv
 from tam_points import FIELD_GOALBOX_CENTER_BOTTOM, GOALPOST_NORTHEAST, GOALPOST_NORTHWEST
 from tam_constants import BEARING_NORTH
-from tam_draw import draw_robot_to_field, draw_arrow_point_to_point, draw_camerastate_to_cam, add_text_top
+from tam_draw import draw_robot_to_field, draw_arrow_point_to_point, draw_camerastate_to_cam, add_text_top, draw_angle_lines_on_camera_frame
 from tam_colors import GREEN, FUCHSIA
 import math
 from tam_classes import Point
@@ -74,14 +74,25 @@ frame_field = draw_arrow_point_to_point(frame_field, point_R_default, GOALPOST_N
 frame_field = draw_arrow_point_to_point(frame_field, point_R_default, GOALPOST_NORTHEAST, color= FUCHSIA, is_in_inches=True, label_lines=["RE"])
 
 
-frame_left_annotated = draw_camerastate_to_cam(frame_left, cs_left)
-frame_left_annotated = add_text_top(frame_left_annotated, "LEFT")
-frame_right_annotated = draw_camerastate_to_cam(frame_right, cs_right)
-frame_right_annotated = add_text_top(frame_right_annotated, "RIGHT")
+# show both detections to the same frame for a cool overlay effect
 
-left_frames = concat_frames(frame_left_annotated, frame_right_annotated, "DOWN")
-screen = concat_frames(left_frames, frame_field)
-screen = resize_frame(screen, 0.5)
+frame_left_overlay = draw_angle_lines_on_camera_frame(frame_left, list_of_angles_deg=[-20, -15, -10, -5, 0, 5, 10, 15, 20], add_text=True)
+frame_left_overlay = draw_camerastate_to_cam(frame_left_overlay, cs_left)
+frame_left_overlay = draw_camerastate_to_cam(frame_left_overlay, cs_right)
+frame_left_overlay = add_text_top(frame_left_overlay, "Left Camera with both overlays")
 
 
-show_frame(screen)
+
+show_frame(frame_left_overlay)
+
+# frame_left_annotated = draw_camerastate_to_cam(frame_left, cs_left)
+# frame_left_annotated = add_text_top(frame_left_annotated, "LEFT")
+
+# frame_right_annotated = draw_camerastate_to_cam(frame_right, cs_right)
+# frame_right_annotated = add_text_top(frame_right_annotated, "RIGHT")
+
+# left_frames = concat_frames(frame_left_annotated, frame_right_annotated, "DOWN")
+# screen = concat_frames(left_frames, frame_field)
+# screen = resize_frame(screen, 0.5)
+# show_frame(screen)
+

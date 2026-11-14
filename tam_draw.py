@@ -1214,10 +1214,14 @@ def draw_vertical_line_on_camera_frame(frame: np.ndarray, dis_from_left: int = 0
 
     point_top = Point(dis_from_left, 0)
     point_bottom = Point(dis_from_left, CAMERA_CAPTURE_Y)
-    point_middle = Point(dis_from_left, SCREEN_CENTER_Y)
+
+    label_position = Point(
+        x=point_top.x,
+        y= point_top.y)
+    label_position.y += 10
 
     if label != "":
-        frame = add_text_left_of_point(frame, [label], center_left= point_middle)
+        frame = add_text_left_of_point(frame, [label], center_left= label_position)
 
     frame = draw_line_point_to_point(frame, point_top, point_bottom, color= WHITE)
 
@@ -1229,7 +1233,7 @@ def draw_vertical_line_on_camera_frame(frame: np.ndarray, dis_from_left: int = 0
 def draw_angle_lines_on_camera_frame(
         frame: np.ndarray, 
         add_text: bool = False,
-        list_of_angles_deg: list[float] = [-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0]) -> np.ndarray:
+        list_of_angles_deg: list[float] = [-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0],) -> np.ndarray:
     '''draw vertical lines for each deg listed and return the frame'''
 
     
