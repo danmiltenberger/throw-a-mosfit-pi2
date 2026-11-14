@@ -8,3 +8,6 @@ IP at school: 10.201.20.28
 pi5 ip at school: 10.201.6.89
 
 
+### rpi cam commands
+rpicam-hello --list-cameras
+rpicam-hello --timeout 0
