@@ -23,15 +23,17 @@ TO ADD A NEW MODE
   4. Return Mode.XXX from some other mode to enter it.
 """
 
+from dataclasses import dataclass
 import math
 import time
 from enum import Enum, auto
 import numpy as np
 
-from tam_classes import Point, FieldState, BotCommand, get_capture_zone_point
+from tam_classes import Line, Point, FieldState, BotCommand, get_capture_zone_point
 from tam_commands import BOT_FORWARD, BOT_BACKWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_KICK, BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT, ARM_OUT
+from tam_decide import is_on_line, perdenicular_line, perpendicular_line
 from tam_points import FIELD_GOAL_CENTER_TOP, FIELD_GOALBOX_CENTER_BOTTOM
-from tam_constants import BEARING_EAST, BEARING_NORTH
+from tam_constants import BEARING_WEST, BEARING_EAST, BEARING_NORTH, BEARING_SOUTH
 from tam_points import FIELD_GOAL_CENTER_BOTTOM
 
 
@@ -75,6 +77,15 @@ ORBIT_ANGLE_TOL_RAD = math.radians(15)  # "behind the ball" is good enough withi
 FACE_BALL_TOL_RAD = math.radians(15)
 ORBIT_STRAFE_SEC = 0.3        # strafe is slow, so use longer steps
 
+MANEUVER_CLEARANCE_IN = 12      # how far to go around the opponent when maneuvering
+OPP_BLOCK_ENTER_IN = 8.0
+OPP_BLOCK_EXIT_IN = 11.0       # bigger than ENTER = hysteresis
+MANEUVER_CLEARANCE_IN = 12.0
+WAYPOINT_TOL_IN = 3.0
+FIELD_CENTER_X = 0.0
+
+
+
 
 
 
@@ -82,7 +93,12 @@ ORBIT_STRAFE_SEC = 0.3        # strafe is slow, so use longer steps
 # ---------------------------------------------------------------------------
 # 2. The Brain: holds the current mode + anything that needs memory between frames
 # ---------------------------------------------------------------------------
+@dataclass
 class Brain:
+    ball_lost_frames: int = 0               # existing
+    maneuver_side: int | None = None        # NEW: +1 / -1 while maneuvering, None otherwise
+    maneuver_step: int = 0                  # NEW: which step of the maneuver sequence we're on
+   
     def __init__(self, start_mode: Mode = Mode.SEARCH):
         self.mode = start_mode
         self.mode_start_time = time.perf_counter()
@@ -186,6 +202,9 @@ def ball_in_capture_zone(fs: FieldState, extra_radius_in: float = 0) -> bool:
     return distance(fs.ball_pos_in, fs.capture_zone_center) <= fs.our_bot_capture_zone_radius + extra_radius_in
 
 
+
+
+
 # ---------------------------------------------------------------------------
 # 3. The modes. Each one: decide what to do, and decide whether to leave.
 # ---------------------------------------------------------------------------
@@ -207,10 +226,17 @@ def mode_approach_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     
     if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
         return BotCommand(), Mode.SEARCH
-
+    
     # NEW: close to the ball but on the wrong side -> orbit around it
     near_ball = distance(fs.our_bot_pos_in, fs.ball_pos_in) < ORBIT_RADIUS_IN + 4
-    if near_ball and not lined_up(fs, FIELD_GOAL_CENTER_TOP):
+    diff_of_ang_ball_goal = wrap_angle(angle_error_to(fs, FIELD_GOAL_CENTER_TOP) - angle_error_to(fs, fs.ball_pos_in))
+    lined_up = abs(diff_of_ang_ball_goal) < ORBIT_ANGLE_TOL_RAD
+    line_to_ball = Line(pt1=fs.our_bot_pos_in, pt2=fs.ball_pos_in)
+    
+    if is_on_line(fs.their_bot_pos_in, line_to_ball, tol_in=OPP_BLOCK_ENTER_IN):
+        return BotCommand(), Mode.MANEUVER
+
+    if near_ball and not lined_up:
         return BotCommand(), Mode.ORBIT_BALL
 
     if fs.ball_is_seen and ball_in_capture_zone(fs):
@@ -226,6 +252,14 @@ def mode_dribble(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]: #APPR
         fs.ball_is_seen and not ball_in_capture_zone(fs, extra_radius_in=CAPTURE_EXIT_EXTRA_IN)
     ):
         return BotCommand(), Mode.APPROACH_BALL
+
+    # if opp bot in line of us and goal, move around
+    line_to_goal = Line(pt1=fs.our_bot_pos_in, pt2=FIELD_GOAL_CENTER_TOP)
+
+    if is_on_line(fs.their_bot_pos_in, line_to_goal, tol_in=OPP_BLOCK_ENTER_IN):
+        return BotCommand(), Mode.MANEUVER
+
+
 
     # EXIT: close enough and aimed at their goal -> shoot
     close = distance(fs.our_bot_pos_in, FIELD_GOAL_CENTER_TOP) < SHOOT_RANGE_IN
@@ -325,6 +359,7 @@ def mode_defend(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]: #SEARC
 def mode_orbit_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     if fs.ball_is_theirs:
         return BotCommand(), Mode.DEFEND
+    
     if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
         return BotCommand(), Mode.SEARCH
 
@@ -332,6 +367,32 @@ def mode_orbit_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     if done:
         return BotCommand(), Mode.APPROACH_BALL   # lined up -> approach drives straight in
     return command, Mode.ORBIT_BALL
+
+
+def mode_maneuver(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
+    # ...DEFEND / SEARCH / lost-ball / lane-clear exits as before
+    #    (and reset brain.maneuver_step = 0 in each of them)
+
+    if brain.maneuver_step == 0:
+        # Step 0: sidestep to the detour point beside the opponent
+        line_to_goal = Line(pt1=fs.our_bot_pos_in, pt2=FIELD_GOAL_CENTER_TOP)
+        detour = perpendicular_line(line_to_goal, fs.their_bot_pos_in, length=MANEUVER_CLEARANCE_IN, side=brain.maneuver_side)
+        
+        
+        if distance(fs.our_bot_pos_in, detour.pt2) < WAYPOINT_TOL_IN:
+            brain.maneuver_step = 1          # arrived -> next step
+        
+        return drive_toward(fs, detour.pt2), Mode.MANEUVER
+
+    if brain.maneuver_step == 1:
+        # Step 1: re-line up behind the ball toward the goal
+        command, done = rotate_around_ball(fs, FIELD_GOAL_CENTER_TOP)
+        if done:
+            brain.maneuver_step = 0
+            brain.maneuver_side = None
+            return BotCommand(), Mode.DRIBBLE
+        return command, Mode.MANEUVER
+
 
 
 # ---------------------------------------------------------------------------
@@ -345,6 +406,7 @@ MODE_FUNCTIONS = {
     Mode.HOME: mode_home,
     Mode.DEFEND: mode_defend, 
     Mode.ORBIT_BALL: mode_orbit_ball, 
+    Mode.MANEUVER: mode_maneuver
 }
 
 
@@ -357,8 +419,10 @@ if __name__ == "__main__":
     from tam_ourbot import in_per_sec_forward, rad_per_sec_rotation
 
     fs = FieldState()
+    fs.ball_is_theirs = False
     fs.our_bot_pos_in = Point(48, 12)
-    fs.our_bot_bearing_rad = BEARING_EAST   
+    fs.our_bot_bearing_rad = BEARING_NORTH
+    fs.their_bot_bearing_rad = BEARING_SOUTH
     fs.ball_pos_in = Point(48, 72)
 
     brain = Brain()

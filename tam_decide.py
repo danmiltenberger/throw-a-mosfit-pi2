@@ -17,8 +17,8 @@ from tam_constants import HAT_BLUE, HAT_FUCHSIA, HAT_GREEN, HAT_YELLOW, BALL_RED
  APPROACH_BALL
  CARRY_BALL
         if bot in line from us to goal and we have ball swerve
-SHOOT_BALL
-DEFEND
+ SHOOT_BALL
+ DEFEND
     return home and block 
 
 
@@ -43,29 +43,41 @@ def get_init_fieldstate(match_settings: dict = {}) -> FieldState:
     return fieldstate
 
 
-def is_on_line(point_in_q: Point, line: Line) -> bool:
-    # check if a given point lies on the line between points
-    # used for collision detection and etc 
+def is_on_line(point_in_q: Point, line: Line, tol_in: float = 1.0) -> bool:
+    """True if point_in_q is within tol_in of the SEGMENT from line.pt1 to line.pt2."""
+    dx = line.pt2.x - line.pt1.x
+    dy = line.pt2.y - line.pt1.y
+    seg_len = math.hypot(dx, dy)
+    if seg_len < 1e-9:  # degenerate line: just check distance to the point
+        return math.hypot(point_in_q.x - line.pt1.x, point_in_q.y - line.pt1.y) < tol_in
+    ux, uy = dx / seg_len, dy / seg_len
 
-    # equation of line: y = mx + b
-    rise = line.pt2.y - line.pt1.y
-    run = line.pt2.x - line.pt1.x
-    m = rise / run
+    rx = point_in_q.x - line.pt1.x
+    ry = point_in_q.y - line.pt1.y
 
-    # solve for b (y intercept) using one of the poitns
-    b = line.pt1.y - m * line.pt1.x
-
-    # check if new point lies along the line
-    calc_y = m * point_in_q.x + b
-
-    # round to nearest whole num
-    calc_y = round(calc_y)
-    given_y = round(point_in_q.y)
-
-    if calc_y == given_y:
-        return True
-    else:
+    along = rx * ux + ry * uy            # distance along the segment from pt1
+    if along < 0 or along > seg_len:     # behind pt1 or past pt2
         return False
+
+    off_line = abs(ux * ry - uy * rx)    # true perpendicular distance to the line
+    return off_line < tol_in
+
+
+def perpendicular_line(line: Line, point: Point, length: float = 1.0, side: int = 1) -> Line:
+    """Line through `point`, perpendicular to `line`, extending `length` inches.
+    side = +1 -> left of line direction (pt1 -> pt2), -1 -> right."""
+
+    dx = line.pt2.x - line.pt1.x
+    dy = line.pt2.y - line.pt1.y
+    mag = math.hypot(dx, dy)
+    if mag < 1e-9:
+        raise ValueError("line has zero length")
+
+    # unit perpendicular: rotate the unit direction 90 degrees
+    px, py = -dy / mag, dx / mag
+
+    end = Point(point.x + side * length * px, point.y + side * length * py)
+    return Line(pt1=point, pt2=end)
 
 
 def is_within_rect(point_in_q: Point, top_left: Point, bot_right: Point) -> bool:
