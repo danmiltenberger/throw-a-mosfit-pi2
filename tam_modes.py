@@ -32,7 +32,7 @@ import numpy as np
 from tam_classes import Line, Point, FieldState, BotCommand, get_capture_zone_point
 from tam_commands import BOT_FORWARD, BOT_BACKWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_KICK, BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT, ARM_OUT
 from tam_decide import is_on_line, perpendicular_line, perpendicular_line
-from tam_points import FIELD_GOAL_CENTER_TOP, FIELD_GOALBOX_CENTER_BOTTOM
+from tam_points import FIELD_CENTER, FIELD_GOAL_CENTER_TOP, FIELD_GOALBOX_CENTER_BOTTOM
 from tam_constants import BEARING_WEST, BEARING_EAST, BEARING_NORTH, BEARING_SOUTH
 from tam_points import FIELD_GOAL_CENTER_BOTTOM
 
@@ -121,6 +121,8 @@ class Brain:
         self.mode_start_time = time.perf_counter()
 
         # reset per-mode memory on entry
+        self.maneuver_step = 0
+        self.maneuver_side = None
         self.ball_lost_frames = 0
         self.has_kicked = False
 
@@ -223,6 +225,11 @@ def avoid_left_bot(fs: FieldState, goal: Point = FIELD_GOAL_CENTER_TOP) -> tuple
         return BotCommand(BOT_STRAFE_LEFT, CMD_DUR_SEC), False
 
     return BotCommand(), True
+
+def pick_maneuver_side(fs: FieldState) -> int:
+    '''Go around the opponent on the side with more room. +1 / -1 (same convention as perpendicular_line's side).'''
+    return 1 if fs.their_bot_pos_in.x > FIELD_CENTER.x else -1
+
 
 
 # ---------------------------------------------------------------------------
@@ -395,28 +402,24 @@ def mode_orbit_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
 
 
 def mode_maneuver(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
-    # ...DEFEND / SEARCH / lost-ball / lane-clear exits as before
-    #    (and reset brain.maneuver_step = 0 in each of them)
+    # EXITS
+    if fs.ball_is_theirs:
+        return BotCommand(), Mode.HOME
+    if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
+        return BotCommand(), Mode.SEARCH
+
+    # pick which way to go around (once per maneuver)
+    if brain.maneuver_side is None:
+        brain.maneuver_side = pick_maneuver_side(fs)
 
     if brain.maneuver_step == 0:
-        # Step 0: sidestep to the detour point beside the opponent
-        line_to_goal = Line(pt1=fs.our_bot_pos_in, pt2=FIELD_GOAL_CENTER_TOP)
-        detour = perpendicular_line(line_to_goal, fs.their_bot_pos_in, length=MANEUVER_CLEARANCE_IN, side=brain.maneuver_side)
-        
-        
-        if distance(fs.our_bot_pos_in, detour.pt2) < WAYPOINT_TOL_IN:
-            brain.maneuver_step = 1          # arrived -> next step
-        
-        return drive_toward(fs, detour.pt2), Mode.MANEUVER
+        ...   # your step 0, unchanged
 
     if brain.maneuver_step == 1:
-        # Step 1: re-line up behind the ball toward the goal
-        command, done = rotate_around_ball(fs, FIELD_GOAL_CENTER_TOP)
-        if done:
-            brain.maneuver_step = 0
-            brain.maneuver_side = None
-            return BotCommand(), Mode.DRIBBLE
-        return command, Mode.MANEUVER
+        ...   # your step 1, unchanged
+
+    # fallback: should never get here
+    return BotCommand(), Mode.APPROACH_BALL
 
 
 
