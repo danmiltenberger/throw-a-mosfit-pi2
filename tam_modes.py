@@ -31,7 +31,7 @@ import numpy as np
 
 from tam_classes import Line, Point, FieldState, BotCommand, get_capture_zone_point
 from tam_commands import BOT_FORWARD, BOT_BACKWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_KICK, BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT, ARM_OUT
-from tam_decide import is_on_line, perdenicular_line, perpendicular_line
+from tam_decide import is_on_line, perpendicular_line, perpendicular_line
 from tam_points import FIELD_GOAL_CENTER_TOP, FIELD_GOALBOX_CENTER_BOTTOM
 from tam_constants import BEARING_WEST, BEARING_EAST, BEARING_NORTH, BEARING_SOUTH
 from tam_points import FIELD_GOAL_CENTER_BOTTOM
@@ -49,6 +49,7 @@ class Mode(Enum):
     HOME = auto()            # go to the position in front of our goal
     DEFEND = auto()          # Stand between play and goal with arms out -> if oppent no longer as ball -> search
     ORBIT_BALL = auto()      # rotate around the ball to get a better angle on the goal
+    MANEUVER = auto()        # go around the opponent with ball
 
 # ---------------------------------------------------------------------------
 # Tuning numbers (all inches / seconds / radians)
@@ -83,6 +84,8 @@ OPP_BLOCK_EXIT_IN = 11.0       # bigger than ENTER = hysteresis
 MANEUVER_CLEARANCE_IN = 12.0
 WAYPOINT_TOL_IN = 3.0
 FIELD_CENTER_X = 0.0
+
+AVOID_DIST_IN = 24 
 
 
 
@@ -201,8 +204,25 @@ def ball_in_capture_zone(fs: FieldState, extra_radius_in: float = 0) -> bool:
     fs = get_capture_zone_point(fs)
     return distance(fs.ball_pos_in, fs.capture_zone_center) <= fs.our_bot_capture_zone_radius + extra_radius_in
 
+def avoid_left_bot(fs: FieldState, goal: Point = FIELD_GOAL_CENTER_TOP) -> tuple[BotCommand, bool]:
+    '''If the opponent is directly in front and in the way, strafe left for a little then check if still in way.
+    Returns (command, clear). clear = True when the opponent is NOT in the way (caller does its normal action).'''
 
+    # can't avoid what we can't see
+    if not fs.their_bot_is_seen:
+        return BotCommand(), True
 
+    them = fs.their_bot_pos_in
+    dist_to_them = distance(fs.our_bot_pos_in, them)
+
+    close = dist_to_them < AVOID_DIST_IN
+    ahead = abs(angle_error_to(fs, them)) < AIM_TOLERANCE_RAD
+    between_us_and_goal = dist_to_them < distance(fs.our_bot_pos_in, goal)
+
+    if close and ahead and between_us_and_goal:
+        return BotCommand(BOT_STRAFE_LEFT, CMD_DUR_SEC), False
+
+    return BotCommand(), True
 
 
 # ---------------------------------------------------------------------------
@@ -226,7 +246,12 @@ def mode_approach_ball(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     
     if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
         return BotCommand(), Mode.SEARCH
-    
+
+        # avoid the opponent if it's in the way
+    command, clear = avoid_left_bot(fs, FIELD_GOAL_CENTER_TOP)
+    if not clear:
+        return command, Mode.APPROACH_BALL
+
     # NEW: close to the ball but on the wrong side -> orbit around it
     near_ball = distance(fs.our_bot_pos_in, fs.ball_pos_in) < ORBIT_RADIUS_IN + 4
     diff_of_ang_ball_goal = wrap_angle(angle_error_to(fs, FIELD_GOAL_CENTER_TOP) - angle_error_to(fs, fs.ball_pos_in))
@@ -395,6 +420,10 @@ def mode_maneuver(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
 
 
 
+
+
+
+
 # ---------------------------------------------------------------------------
 # 4. Lookup table: Mode -> function. Add new modes here.
 # ---------------------------------------------------------------------------
@@ -415,35 +444,54 @@ MODE_FUNCTIONS = {
 #   python3 tam_modes.py
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    from tam_constants import BEARING_EAST
-    from tam_ourbot import in_per_sec_forward, rad_per_sec_rotation
+    from tam_constants import BEARING_NORTH
+    from tam_ourbot import in_per_sec_forward, in_per_sec_backward, in_per_sec_strafe, rad_per_sec_rotation
 
+    # SCENARIO: near our goal, ball in front of us, opponent between us and their goal
     fs = FieldState()
+    fs.our_bot_pos_in = Point(FIELD_GOALBOX_CENTER_BOTTOM.x, FIELD_GOALBOX_CENTER_BOTTOM.y)  # (48, 12) in our goal box
+    fs.our_bot_bearing_rad = BEARING_NORTH                                                   # facing their goal
+    fs.ball_pos_in = Point(48, 30)                                                           # ~18" in front of us
+    fs.their_bot_pos_in = Point(48, 60)                                                      # straight up the middle, in our path
+    fs.their_bot_is_seen = True
     fs.ball_is_theirs = False
-    fs.our_bot_pos_in = Point(48, 12)
-    fs.our_bot_bearing_rad = BEARING_NORTH
-    fs.their_bot_bearing_rad = BEARING_SOUTH
-    fs.ball_pos_in = Point(48, 72)
 
-    brain = Brain()
+    brain = Brain(Mode.APPROACH_BALL)
+    closest_to_them = distance(fs.our_bot_pos_in, fs.their_bot_pos_in)
 
-    for frame in range(400):
+    for frame in range(1000):
         fs.ball_is_seen = abs(angle_error_to(fs, fs.ball_pos_in)) < math.radians(30)  # fake 60deg camera FOV
         cmd = brain.step(fs)
 
         # fake physics: apply the command
         dt = cmd.dur_sec
+        th = fs.our_bot_bearing_rad
         if cmd.com_str == BOT_ROTATE_LEFT:
             fs.our_bot_bearing_rad += rad_per_sec_rotation * dt
         elif cmd.com_str == BOT_ROTATE_RIGHT:
             fs.our_bot_bearing_rad -= rad_per_sec_rotation * dt
         elif cmd.com_str == BOT_FORWARD:
             step = in_per_sec_forward * dt
-            fs.our_bot_pos_in.x += step * math.cos(fs.our_bot_bearing_rad)
-            fs.our_bot_pos_in.y += step * math.sin(fs.our_bot_bearing_rad)
+            fs.our_bot_pos_in.x += step * math.cos(th)
+            fs.our_bot_pos_in.y += step * math.sin(th)
             if brain.mode == Mode.DRIBBLE:   # ball gets pushed along
-                fs.ball_pos_in.x += step * math.cos(fs.our_bot_bearing_rad)
-                fs.ball_pos_in.y += step * math.sin(fs.our_bot_bearing_rad)
+                fs.ball_pos_in.x += step * math.cos(th)
+                fs.ball_pos_in.y += step * math.sin(th)
+        elif cmd.com_str == BOT_BACKWARD:
+            step = in_per_sec_backward * dt
+            fs.our_bot_pos_in.x -= step * math.cos(th)
+            fs.our_bot_pos_in.y -= step * math.sin(th)
+        elif cmd.com_str in (BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT):
+            step = in_per_sec_strafe * dt
+            if cmd.com_str == BOT_STRAFE_LEFT:
+                step = -step
+            fs.our_bot_pos_in.x += step * math.sin(th)    # facing th: right = (sin th, -cos th)
+            fs.our_bot_pos_in.y -= step * math.cos(th)
         elif cmd.com_str == BOT_KICK:
             print(f"KICK at frame {frame}, bot at {fs.our_bot_pos_in}")
             break
+
+        closest_to_them = min(closest_to_them, distance(fs.our_bot_pos_in, fs.their_bot_pos_in))
+
+    print(f"end: bot {fs.our_bot_pos_in}, ball {fs.ball_pos_in}, mode {brain.mode.name}")
+    print(f"closest we got to their bot: {closest_to_them:.1f} in")
