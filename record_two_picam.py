@@ -3,6 +3,8 @@ from datetime import datetime
 
 import cv2
 import numpy as np
+
+
 from tam_switches import get_switch_status, setup_switches
 from tam_binocular import setup_left_right_cams, get_left_right_frames
 from picamera2 import Picamera2
@@ -92,3 +94,7 @@ def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
             writer_right.release()
         picam_left.stop()
         picam_right.stop()
+
+if __name__ == "__main__":
+
+    record_picam_left_right()
