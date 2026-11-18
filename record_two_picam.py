@@ -125,3 +125,6 @@ def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
         close_clips()  # leaves "Files saved" on the LCD at shutdown
         picam_left.stop()
         picam_right.stop()
+
+if __name__ == "__main__":
+    record_picam_left_right()
