@@ -6,6 +6,9 @@ import numpy as np
 from picamera2 import Picamera2 #type: ignore
 
 from tam_lcd import write_lcd_lines
+from tam_binocular import setup_left_right_cams, get_left_right_frames
+from tam_frame import concat_frames, show_frame_in_loop, resize_frame
+from tam_draw import add_text_top
 
 
 def record_two_picams(
@@ -114,7 +117,20 @@ if __name__ == "__main__":
 
 
     print("running record two_picam!")
+    print("check the preview and press q to record. Preview is OFF to speed up processing")
     duration = int(input("type seconds to record:"))
+
+    camL, camR = setup_left_right_cams()
+    while True:
+        frameL, frameR = get_left_right_frames(cam_left=camL, cam_right= camR)
+
+        frameL = add_text_top(frameL,"LEFT")
+        frameR = add_text_top(frameR,"RIGHT")
+
+        frame_both = concat_frames(frameL, frameR, "DOWN")
+        if show_frame_in_loop(frame_both) == False:
+            break
+
 
     print("started recording!")
     left_file, right_file = record_two_picams(
@@ -123,7 +139,7 @@ if __name__ == "__main__":
         fps=30,
         left_camera_id=0,
         right_camera_id=1,
-        preview=True,
+        preview=False,
     )
 
     print(f"Saved: {left_file}")
