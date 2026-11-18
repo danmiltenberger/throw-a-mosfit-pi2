@@ -66,9 +66,6 @@ def convert_angle_from_screen_center_to_ccw_east(angle_rad: float) -> float:
     return from_east_as_rad
 
 
-import math
-
-
 def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float, dis_cam_center_to_center_in:float = 5) -> tuple[float,float]:
     """Return horizontal-plane range in inches and bearing in radians from the cameras' midpoint.
 
@@ -113,12 +110,6 @@ def calc_range_and_bearing_with_two_sightings(rad_left: float, rad_right: float,
     return dis_in, bearing_rad
 
 
-
-
-
-
-
-
 def convert_to_field(
     robot_pos: Point,
     robot_bearing_rad: float,
@@ -140,10 +131,6 @@ def convert_to_field(
 
     return object_pos
 
-
-import math
-
-import math
 
 def law_of_sines(
         solve_for : str,

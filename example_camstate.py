@@ -18,6 +18,7 @@ cs_right = get_camerastate(right_frame, search_dict, is_left=False)
 
 bot_command = get_botcom_from_cam(cs_left)
 left_frame = draw_camerastate_to_cam(left_frame, cs_left, our_left_is_green= False)
+left_frame = draw_camerastate_to_cam(left_frame, cs_right, our_left_is_green= False)
 
 
 

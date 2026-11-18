@@ -46,7 +46,7 @@ rpicam-hello --timeout 0
 
 
 ### autostart commands
-# rpi has a setup to automatically display the IP and time to the LCD, but it can compete with lcd display
+# rpi has a setup to automatically display the IP and time to the LCD, but it can compete with lcd display during the game
 sudo systemctl stop switches.service      # stop it now
 sudo systemctl disable switches.service   # don't start at boot
 sudo systemctl restart switches.service   # after editing your script

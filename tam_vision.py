@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 import math
-from tam_classes import FieldState, Point, Detection, CameraState
+from tam_classes import FieldState, Point, Detection, CameraState, GantryState
 from tam_constants import (
     BALL_RED,
     HSV_HI,
@@ -507,3 +507,26 @@ def get_camerastate(frame_camera: np.ndarray, search_dict: dict, is_left: bool =
     return cs
 
 
+def get_gantrystate(cs_left: CameraState, cs_right: CameraState) -> GantryState:
+    '''merge both camerastates to a single gantrystate with more accurate range finding'''
+
+
+    gs = GantryState()
+    side_c = gs.camera_center_to_center_in
+
+    if cs_left.ball_in_frame and cs_right.ball_in_frame:
+        alpha = np.pi/2 - calc_angle_from_screen_center(cs_left.ball_pos_px)
+        beta = np.pi/2 - calc_angle_from_screen_center(cs_right.ball_pos_px)
+
+        gamma = np.pi - alpha - beta
+        
+        # using law of sines to solve
+        twoR = side_c / math.sin(gamma)
+
+        side_b = twoR * math.sin(beta)
+        
+
+
+
+
+    return gs

@@ -103,7 +103,22 @@ class CameraState:
     gppr_width_px : float = 0
 
 
+@dataclass
+class GantryState:
+    '''a class containing all the information pulled from both cameras both facing forward.
+    EVERYTHING in inches and radians with respect to the center of the gantry'''
 
+    camera_center_to_center_in : float = 5
+
+    ball_dis_in : float = 500
+    tbot_dis_in : float = 500
+    gpgr_dis_in : float = 500
+    gppr_dis_in : float = 500
+
+    ball_rad : float = 0
+    tbot_rad : float = 0
+    gpgr_rad : float = 0
+    gppr_rad : float = 0
 
 
 
@@ -111,7 +126,7 @@ class CameraState:
 @dataclass
 class FieldState:
     '''a class to contain all the information needed to draw the current state of the field. 
-    EVERYTHING in inches or radians'''
+    EVERYTHING in inches or radians with respect to the field '''
 
     timestep: float = 0
 

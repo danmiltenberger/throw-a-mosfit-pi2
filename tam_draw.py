@@ -1524,6 +1524,13 @@ def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is
             radius= int(cs.ball_width_px / 2)
         )
 
+        rad = calc_angle_from_screen_center(cs.ball_pos_px)
+        frame_cam = add_text_left_of_point(
+            frame_cam, 
+            [str(round(math.degrees(rad),1)) + "deg"],
+            center_left= cs.ball_pos_px
+        )
+
     if cs.gpgr_in_frame:
         frame_cam = draw_circle_to_frame(
             frame= frame_cam,
