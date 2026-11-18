@@ -120,6 +120,7 @@ def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
                 next_frame_time = time.monotonic()  # fell behind; resync
 
     except KeyboardInterrupt:
+        write_lcd_lines(["No Program"])
         pass
     finally:
         close_clips()  # leaves "Files saved" on the LCD at shutdown
