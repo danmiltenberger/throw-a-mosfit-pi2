@@ -1,14 +1,17 @@
 import time
 from datetime import datetime
+from typing import Optional
 
 import cv2
 import numpy as np
-
-
 from tam_switches import get_switch_status, setup_switches
 from tam_binocular import setup_left_right_cams, get_left_right_frames
+from tam_lcd import write_lcd_lines
 from picamera2 import Picamera2
-from typing import Optional
+
+LCD_WIDTH = 20
+LCD_ROWS = 4
+SAVED_MESSAGE_SEC = 3  # how long the "Files saved" screen stays up before status resumes
 
 
 def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
@@ -23,8 +26,27 @@ def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
     picam_left : Picamera2
     picam_right : Picamera2
 
+    writer_left: Optional[cv2.VideoWriter] = None
+    writer_right: Optional[cv2.VideoWriter] = None
+    timestamp = ""
+    frames_written = 0
+    total_frames = duration_sec * frames_per_sec
+    frame_interval = 1.0 / frames_per_sec
+    next_frame_time = time.monotonic()
+    saved_until = 0.0
+    last_lcd: Optional[list] = None
+
+    def lcd(lines: list):
+        # Pad/truncate to 4 rows x 20 chars, and only write when the text changes
+        # (avoids hammering the LCD at every video frame)
+        nonlocal last_lcd
+        padded = (list(lines) + [""] * LCD_ROWS)[:LCD_ROWS]
+        fitted = [line[:LCD_WIDTH].ljust(LCD_WIDTH) for line in padded]
+        if fitted != last_lcd:
+            write_lcd_lines(fitted)
+            last_lcd = fitted
+
     def to_bgr(frame: np.ndarray) -> np.ndarray:
-        # Drop the alpha/padding channel if present (e.g. XRGB8888 -> 3 channels)
         if frame.ndim == 3 and frame.shape[2] == 4:
             frame = frame[:, :, :3]
         return np.ascontiguousarray(frame)
@@ -34,12 +56,20 @@ def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
         fourcc = cv2.VideoWriter.fourcc(*"mp4v")
         return cv2.VideoWriter(path, fourcc, frames_per_sec, (width, height))
 
-    writer_left: Optional[cv2.VideoWriter] = None
-    writer_right: Optional[cv2.VideoWriter] = None
-    frames_written = 0
-    total_frames = duration_sec * frames_per_sec
-    frame_interval = 1.0 / frames_per_sec
-    next_frame_time = time.monotonic()
+    def close_clips():
+        # Release both writers and show the "Files saved" screen
+        nonlocal writer_left, writer_right, saved_until
+        if writer_left is None and writer_right is None:
+            return
+        if writer_left is not None:
+            writer_left.release()
+            writer_left = None
+        if writer_right is not None:
+            writer_right.release()
+            writer_right = None
+        short = timestamp[5:]  # drop the year so it fits in 20 chars
+        lcd(["Files saved", f"L:{short}", f"R:{short}"])
+        saved_until = time.monotonic() + SAVED_MESSAGE_SEC
 
     try:
         while True:
@@ -65,17 +95,21 @@ def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
                 writer_right.write(frame_right)
                 frames_written += 1
 
+                # Live status while recording (text only changes once per second)
+                elapsed = frames_written // frames_per_sec
+                lcd([
+                    "Switch: ON",
+                    "Recording...",
+                    f"Time: {elapsed}s/{duration_sec}s",
+                ])
+
                 if frames_written >= total_frames:
-                    writer_left.release()
-                    writer_right.release()
-                    writer_left = writer_right = None
+                    close_clips()
             else:
-                if writer_left is not None:
-                    writer_left.release()
-                    writer_left = None
-                if writer_right is not None:
-                    writer_right.release()
-                    writer_right = None
+                close_clips()
+                # Show idle status once the "Files saved" message has been up long enough
+                if time.monotonic() >= saved_until:
+                    lcd(["Switch: OFF", "Not recording"])
 
             # Pace the loop to the requested frame rate
             next_frame_time += frame_interval
@@ -88,13 +122,6 @@ def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
     except KeyboardInterrupt:
         pass
     finally:
-        if writer_left is not None:
-            writer_left.release()
-        if writer_right is not None:
-            writer_right.release()
+        close_clips()  # leaves "Files saved" on the LCD at shutdown
         picam_left.stop()
         picam_right.stop()
-
-if __name__ == "__main__":
-
-    record_picam_left_right()
