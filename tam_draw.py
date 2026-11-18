@@ -1613,4 +1613,19 @@ def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is
 
 
     return frame_cam
-    
+
+
+def format_lcd_line(left, right, width=20):
+    """Return one line of exactly `width` characters, with `left` left-aligned
+    and `right` right-aligned. `right` is cut short if needed so there is
+    always at least one space between the two strings."""
+    # Space available for the right string (leaving one space after `left`)
+    max_right = max(width - len(left) - 1, 0)
+    right = right[:max_right]
+
+    # If there's no room for the right string, just return the (trimmed) left one
+    if not right:
+        return left[:width].ljust(width)
+
+    padding = width - len(left) - len(right)
+    return left + " " * padding + right

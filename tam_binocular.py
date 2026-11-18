@@ -2,9 +2,6 @@ import numpy as np
 from picamera2 import Picamera2 # type: ignore
 from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y, CAMERA_CAPTURE_FPS
 
-
-picam_horizontal_fov_deg = 62.2
-
 CAM_LEFT = "LEFT_CAM"
 CAM_RIGHT = "RIGHT_CAM"
 
@@ -54,12 +51,3 @@ def get_left_right_frames(cam_left : Picamera2, cam_right : Picamera2) -> tuple[
     frame_right = cam_right.capture_array()
 
     return frame_left, frame_right
-
-
-
-def get_angle_of_object_deg(object_center_x_px : int) -> float:
-    '''return the angle in degrees measured +ccw from the 3oclock position,
-    object_center_x_px is the value in pixels of the object center from the left (0) of the screen'''
-
-
-    return 0

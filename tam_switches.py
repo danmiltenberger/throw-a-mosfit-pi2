@@ -29,7 +29,16 @@ def setup_switches():
 
 
 def get_switch_status(switch_name) -> bool:
-    '''check the status of a switch given the key of the SWITCHES dictionary'''
+    '''check the status of a switch given the key of the SWITCHES dictionary
+    
+    Keys:
+    "toggle_team"
+    "toggle_goal"
+    "toggle_match_type"
+    "toggle_recording"
+    "toggle_arduino_commands"
+    
+    '''
     switch_pin = SWITCHES[switch_name]
 
     if GPIO.input(switch_pin):
