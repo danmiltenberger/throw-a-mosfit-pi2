@@ -23,7 +23,7 @@ while True:
     row2_righ = f"Rec: {int(status_recording)}"
     row3 = f"Send Com: {int(status_send_commands)}"
 
-    row1 = format_lcd_line(row1_left,row2_righ)
+    row1 = format_lcd_line(row1_left,row1_righ)
     row2 = format_lcd_line(row2_left, row2_righ)
 
     list_lines = [row1, row2, row3]
