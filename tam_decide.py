@@ -429,6 +429,7 @@ def try_to_update_robot_pos_from_goalposts(goalpost_green : Detection, goalpost_
 
 
 def convert_detect_list_to_fieldstate(detect_list : list[Detection], prev_fieldstate: FieldState | None = None) -> FieldState:
+
     '''from the list of detected objects, update the fieldstate dataclass'''
 
     # create a new default or use the previous state
@@ -494,3 +495,4 @@ def convert_detect_list_to_fieldstate(detect_list : list[Detection], prev_fields
 
 
     return fieldstate
+
