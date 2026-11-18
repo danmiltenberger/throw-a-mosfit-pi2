@@ -25,7 +25,7 @@ while True:
         list_lines = [row1, row2, row3]
         write_lcd_lines(list_lines)
     except KeyboardInterrupt:
-        write_lcd_lines([])
+        write_lcd_lines(["No Program"])
         break
 
     

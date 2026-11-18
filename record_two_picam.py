@@ -1,146 +1,94 @@
-import os
+import time
 from datetime import datetime
 
 import cv2
 import numpy as np
-from picamera2 import Picamera2 #type: ignore
-
-from tam_lcd import write_lcd_lines
+from tam_switches import get_switch_status, setup_switches
 from tam_binocular import setup_left_right_cams, get_left_right_frames
-from tam_frame import concat_frames, show_frame_in_loop, resize_frame
-from tam_draw import add_text_top
+from picamera2 import Picamera2
+from typing import Optional
 
 
-def record_two_picams(
-    duration_s: float = 60.0,
-    resolution: tuple[int, int] = (1280, 720),
-    fps: int = 30,
-    left_camera_id: int = 0,
-    right_camera_id: int = 1,
-    output_dir: str = "bino_vision",
-    preview: bool = True,
-) -> tuple[str, str]:
-    """
-    Record simultaneous video from two Picamera2 cameras using OpenCV.
+def record_picam_left_right(duration_sec : int = 20, frames_per_sec : int = 30):
+    '''
+    Record two picameras on a raspberry pi when the recording switch is on. 
+    Saves to two files with ISO name structures YYYY_MM_DD_T_HH_MM_SS_LEFT.mp4 or ...RIGHT.mp4
+    '''
 
-    Returns:
-        (left_mp4_path, right_mp4_path)
-    """
+    setup_switches()
+    picam_left, picam_right = setup_left_right_cams()
 
-    width, height = resolution
-    os.makedirs(output_dir, exist_ok=True)
+    picam_left : Picamera2
+    picam_right : Picamera2
 
-    # Example: 1280_720_LEFT_2026_11_5_13_04.mp4
-    timestamp = datetime.now().strftime("%Y_%-m_%-d_%-H_%M")
+    def to_bgr(frame: np.ndarray) -> np.ndarray:
+        # Drop the alpha/padding channel if present (e.g. XRGB8888 -> 3 channels)
+        if frame.ndim == 3 and frame.shape[2] == 4:
+            frame = frame[:, :, :3]
+        return np.ascontiguousarray(frame)
 
-    left_path = os.path.join(
-        output_dir, f"{width}_{height}_{timestamp}_LEFT.mp4"
-    )
-    right_path = os.path.join(
-        output_dir, f"{width}_{height}_{timestamp}_RIGHT.mp4"
-    )
+    def open_writer(path: str, frame: np.ndarray) -> cv2.VideoWriter:
+        height, width = frame.shape[:2]
+        fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+        return cv2.VideoWriter(path, fourcc, frames_per_sec, (width, height))
 
-    fourcc = cv2.VideoWriter.fourcc(*"mp4v")
-    left_writer = cv2.VideoWriter(left_path, fourcc, fps, (width, height))
-    right_writer = cv2.VideoWriter(right_path, fourcc, fps, (width, height))
-
-    if not left_writer.isOpened() or not right_writer.isOpened():
-        left_writer.release()
-        right_writer.release()
-        raise RuntimeError("OpenCV could not open one or both MP4 writers.")
-
-    # Configure both cameras.
-    left_cam = Picamera2(left_camera_id)
-    right_cam = Picamera2(right_camera_id)
-
-    config = {
-        "main": {
-            "size": (width, height),
-            "format": "RGB888",  # OpenCV expects BGR; convert below.
-        },
-        "controls": {"FrameRate": fps},
-    }
-
-    left_cam.configure(left_cam.create_video_configuration(**config))
-    right_cam.configure(right_cam.create_video_configuration(**config))
+    writer_left: Optional[cv2.VideoWriter] = None
+    writer_right: Optional[cv2.VideoWriter] = None
+    frames_written = 0
+    total_frames = duration_sec * frames_per_sec
+    frame_interval = 1.0 / frames_per_sec
+    next_frame_time = time.monotonic()
 
     try:
-        # Start both before recording so their startup delay is similar.
-        left_cam.start()
-        right_cam.start()
+        while True:
+            frame_left, frame_right = get_left_right_frames(picam_left, picam_right)
+            frame_left : np.ndarray
+            frame_right : np.ndarray
 
-        frame_interval = 1.0 / fps
-        sec_per_frame = 1 / fps
-        frames_to_capture = int(duration_s * fps)
+            recording_on = bool(get_switch_status("toggle_recording"))
 
-        for frame_int in range(frames_to_capture):
+            if recording_on:
+                frame_left = to_bgr(frame_left)
+                frame_right = to_bgr(frame_right)
 
+                # Start a new clip if none is open
+                if writer_left is None or writer_right is None:
+                    timestamp = datetime.now().strftime("%Y_%m_%d_T_%H_%M_%S")
+                    writer_left = open_writer(f"{timestamp}_LEFT.mp4", frame_left)
+                    writer_right = open_writer(f"{timestamp}_RIGHT.mp4", frame_right)
+                    frames_written = 0
+                    next_frame_time = time.monotonic()
 
-            # print info to the terminal and lcd
-            elapsed_sec = sec_per_frame * frame_int
-            print(f"frame {frame_int} / {frames_to_capture}, sec:{round(elapsed_sec,1)}")
+                writer_left.write(frame_left)
+                writer_right.write(frame_right)
+                frames_written += 1
 
-            write_lcd_lines(
-                [f"Recording! t+ {round(elapsed_sec,1)}"]
-            )
+                if frames_written >= total_frames:
+                    writer_left.release()
+                    writer_right.release()
+                    writer_left = writer_right = None
+            else:
+                if writer_left is not None:
+                    writer_left.release()
+                    writer_left = None
+                if writer_right is not None:
+                    writer_right.release()
+                    writer_right = None
 
-            left_frame = left_cam.capture_array("main")
-            right_frame = right_cam.capture_array("main")
+            # Pace the loop to the requested frame rate
+            next_frame_time += frame_interval
+            sleep_time = next_frame_time - time.monotonic()
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            else:
+                next_frame_time = time.monotonic()  # fell behind; resync
 
-            # Picamera2 "RGB888" already provides BGR-ordered data for OpenCV.
-            left_bgr = np.asarray(left_frame)
-            right_bgr = np.asarray(right_frame)
-
-            left_writer.write(left_bgr)
-            right_writer.write(right_bgr)
-
-            if preview:
-                combined = np.hstack((left_bgr, right_bgr))
-                cv2.imshow("LEFT | RIGHT", combined)
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    break
-
-            cv2.waitKey(int(frame_interval * 1000))
-
+    except KeyboardInterrupt:
+        pass
     finally:
-        left_cam.stop()
-        right_cam.stop()
-        left_writer.release()
-        right_writer.release()
-        if preview:
-            cv2.destroyAllWindows()
-
-    return left_path, right_path
-
-
-if __name__ == "__main__":
-
-
-    print("running record two_picam!")
-    print("check the preview and press q to record. Preview is OFF to speed up processing")
-    duration = int(input("type seconds to record:"))
-
-    camL, camR = setup_left_right_cams()
-    while True:
-        frameL, frameR = get_left_right_frames(cam_left=camL, cam_right= camR)
-
-        frameL = add_text_top(frameL,"LEFT")
-        frameR = add_text_top(frameR,"RIGHT")
-
-        frame_both = concat_frames(frameL, frameR, "DOWN")
-        if show_frame_in_loop(frame_both) == False:
-            break
-
-
-    print("started recording!")
-    left_file, right_file = record_two_picams(
-        duration_s=duration,
-        resolution=(1280, 720),
-        fps=30,
-        left_camera_id=0,
-        right_camera_id=1,
-        preview=False,
-    )
-
-    print(f"Saved: {left_file}")
-    print(f"Saved: {right_file}")
+        if writer_left is not None:
+            writer_left.release()
+        if writer_right is not None:
+            writer_right.release()
+        picam_left.stop()
+        picam_right.stop()
