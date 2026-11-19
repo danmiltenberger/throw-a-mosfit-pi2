@@ -197,13 +197,13 @@ def rotate_around_ball(fs: FieldState, goal: Point = FIELD_GOAL_CENTER_TOP) -> t
         return BotCommand(BOT_STRAFE_RIGHT, ORBIT_STRAFE_SEC), False
     return BotCommand(BOT_STRAFE_LEFT, ORBIT_STRAFE_SEC), False
 
-def drive_toward(fs: FieldState, target: Point) -> BotCommand: # BOT_FORWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT
-    """Turn if we're not pointed at the target, otherwise drive forward."""
+def drive_toward(fs: FieldState, target: Point, tol_rad: float = AIM_TOLERANCE_RAD) -> BotCommand: # BOT_FORWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT
+    """Turn if we're not pointed at the target (within tol_rad), otherwise drive forward."""
 
     err = angle_error_to(fs, target)
-    if err > AIM_TOLERANCE_RAD:
+    if err > tol_rad:
         return BotCommand(BOT_ROTATE_LEFT, CMD_DUR_SEC)
-    if err < -AIM_TOLERANCE_RAD:
+    if err < -tol_rad:
         return BotCommand(BOT_ROTATE_RIGHT, CMD_DUR_SEC)
     return BotCommand(BOT_FORWARD, CMD_DUR_SEC)
 
@@ -410,8 +410,7 @@ def mode_maneuver(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
     # EXITS
     if fs.ball_is_theirs:
         return BotCommand(), Mode.HOME
-    if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
-        return BotCommand(), Mode.SEARCH
+    
 
     # pick which way to go around (once per maneuver)
     if brain.maneuver_side is None:
@@ -512,7 +511,7 @@ if __name__ == "__main__":
             step = in_per_sec_forward * dt
             fs.our_bot_pos_in.x += step * math.cos(th)
             fs.our_bot_pos_in.y += step * math.sin(th)
-            if brain.mode == Mode.DRIBBLE:   # ball gets pushed along
+            if brain.mode in (Mode.DRIBBLE, Mode.MANEUVER) and ball_in_capture_zone(fs):   # ball gets pushed along
                 fs.ball_pos_in.x += step * math.cos(th)
                 fs.ball_pos_in.y += step * math.sin(th)
         elif cmd.com_str == BOT_BACKWARD:

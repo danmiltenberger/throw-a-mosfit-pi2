@@ -767,13 +767,13 @@ def get_botcom_from_cam(cs: CameraState, our_goal_is_green_purple: bool = True) 
         bot_command.dur_sec = dur_sec
 
     # if we're more than 100 pixels off from facing it, rotate to the ball
-    elif abs(CAMERA_CENTER_X - cs.ball_pos_px.x) > 0: #PHOEBE CHANGED 100 -> 0
+    elif abs(CAMERA_CENTER_X - cs.ball_pos_px.x) > 100: 
         # turn by 10 deg
         rad_10 = math.radians(10)
         bot_command.dur_sec = sec_per_rad * rad_10
 
         # determine direction
-        if CAMERA_CAPTURE_X - cs.ball_pos_px.x > 0:
+        if CAMERA_CENTER_X - cs.ball_pos_px.x > 0:  # PHOEBE CHANGED "CAPTURE" -> "CENTER"
             bot_command.com_str = BOT_ROTATE_LEFT
         else:
             bot_command.com_str = BOT_ROTATE_RIGHT
