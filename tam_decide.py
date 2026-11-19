@@ -1,5 +1,5 @@
 import random
-import ngit umpy as np
+import numpy as np
 import math
 import time
 from typing import Literal

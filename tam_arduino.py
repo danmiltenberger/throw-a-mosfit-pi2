@@ -24,7 +24,7 @@ def send_command_to_arduino(command : BotCommand):
 
     print(f"attempting communication with {port}")
 
-    send_str = command.com_str + str(command.dur_sec)
+    send_str = command.com_str + str((round(command.dur_sec * 1000)))
 
     print(f"linux sent: {send_str}")
 
