@@ -11,3 +11,4 @@ BOT_STRAFE_RIGHT = "D"
 ARM_OUT = "B"           # TODO handle all the interesting defend code later
 ARM_IN = "I"       # max of 2 sec
 BOT_KICK = "K"
+SENSOR_STATUS = "P"
