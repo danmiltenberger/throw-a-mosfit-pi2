@@ -1,85 +1,75 @@
-import re
 import time
-import serial #type: ignore
+import serial  # pip install pyserial
 
-PORT = "/dev/ttyACM0"   # Linux Mega is usually /dev/ttyACM0 (or /dev/ttyUSB0)
-BAUD = 115200           # must match Serial.begin() in the sketch
-MAX_DURATION_S = 10.0   # matches MAX_DURATION_S in the Arduino code
-
-COMMAND_PATTERN = re.compile(r"^([WASDQE])(\d+(\.\d+)?)$")
-
-HELP_TEXT = """
-Commands: <letter><seconds>, e.g. W2.0
-  W = forward     S = backward
-  A = strafe left D = strafe right
-  Q = rotate left E = rotate right
-Type 'quit' to exit.
-"""
+VALID_DIRECTIONS = set("WASDQE")
+ARDUINO_MAX_DURATION = 30.0  # matches MAX_DURATION_S in the sketch
 
 
-def read_arduino_output(ser, quiet_time=0.5):
-    """Print everything the Arduino sends until it goes quiet."""
-    last_data = time.time()
-    while time.time() - last_data < quiet_time:
-        if ser.in_waiting > 0:
-            line = ser.readline().decode("utf-8", errors="replace").rstrip()
-            if line:
-                print(f"  Arduino: {line}")
-            last_data = time.time()
-        else:
-            time.sleep(0.01)
+def connect(port, baud=9600, timeout=60):
+    """Open the serial port and wait for the Arduino to finish its startup test.
 
-
-def prompt_and_send(ser):
-    """Prompt for one command, validate it, and send it to the Arduino.
-
-    Returns False if the user asked to quit, otherwise True.
+    Opening the port resets the Arduino, which then runs the ~20 s motor test
+    before printing "Ready", so we wait for that line before returning.
     """
-    user_input = input("Command (e.g. W2.0, 'help', 'quit'): ").strip().upper()
+    ser = serial.Serial(port, baud, timeout=1)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        line = ser.readline().decode(errors="ignore").strip()
+        if line:
+            print(f"[arduino] {line}")
+        if line.startswith("Ready"):
+            return ser
+    ser.close()
+    raise TimeoutError("Arduino did not report Ready in time")
 
-    if user_input in ("QUIT", "EXIT"):
-        return False
-    if user_input == "HELP":
-        print(HELP_TEXT)
-        return True
 
-    match = COMMAND_PATTERN.match(user_input)
-    if not match:
-        print("Invalid command. Use a letter (W/A/S/D/Q/E) followed by seconds, e.g. W2.0")
-        return True
+def send_command(ser, direction, duration, wait=True):
+    """Send a movement command, e.g. send_command(ser, "W", 1.5).
 
-    duration = float(match.group(2))
+    direction: W forward, S backward, A left, D right,
+               Q rotate counterclockwise, E rotate clockwise
+    duration:  seconds (float)
+    wait:      if True, block until the Arduino reports "Done"
+    """
+    direction = direction.upper()
+    if direction not in VALID_DIRECTIONS:
+        raise ValueError(f"Invalid direction '{direction}'. Use one of: WASDQE")
     if duration <= 0:
-        print("Duration must be greater than 0.")
-        return True
-    if duration > MAX_DURATION_S:
-        print(f"Duration capped at {MAX_DURATION_S} s by the Arduino.")
+        raise ValueError("Duration must be positive")
 
-    ser.write((user_input + "\n").encode("utf-8"))   # newline ends the command
-    print(f"Sent: {user_input}")
-    read_arduino_output(ser)
-    return True
+    ser.write(f"{direction}{duration:.3f}\n".encode())
+    ser.flush()
 
-
-def main():
-    try:
-        ser = serial.Serial(PORT, BAUD, timeout=0.1)
-    except serial.SerialException as e:
-        print(f"Could not open {PORT}: {e}")
+    if not wait:
         return
 
-    with ser:
-        time.sleep(2)            # the Mega resets when the port opens; wait for it to boot
-        ser.reset_input_buffer()
-        read_arduino_output(ser) # show the startup message
-        print(HELP_TEXT)
+    deadline = time.time() + min(duration, ARDUINO_MAX_DURATION) + 5
+    while time.time() < deadline:
+        line = ser.readline().decode(errors="ignore").strip()
+        if not line:
+            continue
+        print(f"[arduino] {line}")
+        if line.startswith("Error"):
+            raise RuntimeError(line)
+        if line == "Done":
+            return
+    raise TimeoutError("No 'Done' response from Arduino")
 
-        try:
-            while prompt_and_send(ser):
-                pass
-        except KeyboardInterrupt:
-            print("\nExiting.")
+
+def stop(ser):
+    """Immediately stop all motors."""
+    ser.write(b"X\n")
+    ser.flush()
 
 
 if __name__ == "__main__":
-    main()
+    # Windows: "COM3"   Linux: "/dev/ttyACM0"   macOS: "/dev/cu.usbmodem*"
+    ser = connect("/dev/ttyACM0")
+    try:
+        send_command(ser, "W", 1)      # forward 1 s
+        send_command(ser, "Q", 1.2)    # rotate CCW 1.2 s
+        send_command(ser, "D", 0.5)    # strafe right 0.5 s
+    except KeyboardInterrupt:
+        stop(ser)
+    finally:
+        ser.close()
