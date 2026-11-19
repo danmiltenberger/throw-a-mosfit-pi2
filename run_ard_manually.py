@@ -1,5 +1,6 @@
 import time
 import serial  # pip install pyserial
+from tam_classes import BotCommand
 
 VALID_DIRECTIONS = set("WASDQE")
 ARDUINO_MAX_DURATION = 30.0  # matches MAX_DURATION_S in the sketch
@@ -54,6 +55,14 @@ def send_command(ser, direction, duration, wait=True):
         if line == "Done":
             return
     raise TimeoutError("No 'Done' response from Arduino")
+
+
+def send_bot_com(serialconnection, botcom: BotCommand):
+    dur = botcom.dur_sec
+    direction = botcom.com_str
+
+    send_command(serialconnection, direction, dur)
+
 
 
 def stop(ser):
