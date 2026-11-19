@@ -1,0 +1,30 @@
+const int LIMIT_PIN_A = 44;
+const int LIMIT_PIN_B = 45;
+
+int lastA = -1;
+int lastB = -1;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LIMIT_PIN_A, INPUT_PULLUP);
+  pinMode(LIMIT_PIN_B, INPUT_PULLUP);
+  Serial.println("Limit switch test started");
+}
+
+void loop() {
+  int a = digitalRead(LIMIT_PIN_A);
+  int b = digitalRead(LIMIT_PIN_B);
+
+  // Only print when something changes
+  if (a != lastA || b != lastB) {
+    Serial.print("Pin 44: ");
+    Serial.print(a == LOW ? "TRIGGERED" : "open     ");
+    Serial.print("  |  Pin 45: ");
+    Serial.println(b == LOW ? "TRIGGERED" : "open");
+
+    lastA = a;
+    lastB = b;
+  }
+
+  delay(20); // simple debounce / loop pacing
+}

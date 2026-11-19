@@ -1,0 +1,51 @@
+// Reflectance (IR) sensor test for Arduino Mega
+// Open Serial Monitor at 115200 baud.
+// Output example:  LEFT: WHITE (612)  |  RIGHT: BLACK (240)
+
+// IR
+#define left_IR_analog   A0
+#define left_IR_digital  42
+
+#define right_IR_analog  A1
+#define right_IR_digital 43
+
+// ---- Calibration ----
+// Higher analog value = lighter surface.
+// Readings >= WHITE_MIN are WHITE, <= BLACK_MAX are BLACK,
+// anything in between is GRAY.
+const int WHITE_MIN = 500;
+const int BLACK_MAX = 400;
+
+const unsigned long PRINT_INTERVAL_MS = 200;
+unsigned long lastPrint = 0;
+
+const char* classify(int value) {
+  if (value >= WHITE_MIN) return "WHITE";
+  if (value <= BLACK_MAX) return "BLACK";
+  return "GRAY";
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(left_IR_digital, INPUT);
+  pinMode(right_IR_digital, INPUT);
+}
+
+void loop() {
+  if (millis() - lastPrint < PRINT_INTERVAL_MS) return;
+  lastPrint = millis();
+
+  int leftA  = analogRead(left_IR_analog);
+  int rightA = analogRead(right_IR_analog);
+
+  Serial.print(F("LEFT: "));
+  Serial.print(classify(leftA));
+  Serial.print(F(" ("));
+  Serial.print(leftA);
+  Serial.print(F(")  |  RIGHT: "));
+  Serial.print(classify(rightA));
+  Serial.print(F(" ("));
+  Serial.print(rightA);
+  Serial.println(F(")"));
+}
