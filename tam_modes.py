@@ -86,6 +86,7 @@ WAYPOINT_TOL_IN = 3.0
 FIELD_CENTER_X = 0.0
 
 AVOID_DIST_IN = 24 
+MANEUVER_AIM_TOL_RAD = math.radians(5)
 
 
 
@@ -108,6 +109,9 @@ class Brain:
         self.ball_lost_frames = 0
         self.has_kicked = False
         self.not_theirs_frames = 0
+        self.arm_last_time = -1e9
+        self.maneuver_target = None
+        
     def time_in_mode(self) -> float:
         return time.perf_counter() - self.mode_start_time
 
@@ -123,6 +127,7 @@ class Brain:
         # reset per-mode memory on entry
         self.maneuver_step = 0
         self.maneuver_side = None
+        self.maneuver_target = None
         self.ball_lost_frames = 0
         self.has_kicked = False
 
@@ -413,10 +418,40 @@ def mode_maneuver(brain: Brain, fs: FieldState) -> tuple[BotCommand, Mode]:
         brain.maneuver_side = pick_maneuver_side(fs)
 
     if brain.maneuver_step == 0:
-        ...   # your step 0, unchanged
+        # Step 0: carry the ball past the opponent's side
+
+        # work out the detour point ONCE, so it doesn't move while we drive to it:
+        # beside the opponent, then pushed further toward the goal so we aim PAST them (small turns keep the ball)
+        if brain.maneuver_target is None:
+            line_to_goal = Line(pt1=fs.our_bot_pos_in, pt2=FIELD_GOAL_CENTER_TOP)
+            beside = perpendicular_line(line_to_goal, fs.their_bot_pos_in, length=MANEUVER_CLEARANCE_IN, side=brain.maneuver_side).pt2
+            to_goal = distance(fs.our_bot_pos_in, FIELD_GOAL_CENTER_TOP)
+            ux = (FIELD_GOAL_CENTER_TOP.x - fs.our_bot_pos_in.x) / to_goal
+            uy = (FIELD_GOAL_CENTER_TOP.y - fs.our_bot_pos_in.y) / to_goal
+            brain.maneuver_target = Point(beside.x + MANEUVER_CLEARANCE_IN * ux, beside.y + MANEUVER_CLEARANCE_IN * uy)
+
+        # made it past the opponent -> next step
+        if distance(fs.our_bot_pos_in, brain.maneuver_target) < WAYPOINT_TOL_IN:
+            brain.maneuver_step = 1
+            brain.ball_lost_frames = 0
+            return BotCommand(), Mode.MANEUVER
+
+        return drive_toward(fs, brain.maneuver_target, tol_rad=MANEUVER_AIM_TOL_RAD), Mode.MANEUVER
+
 
     if brain.maneuver_step == 1:
-        ...   # your step 1, unchanged
+        # Step 1: past the opponent. Still have the ball? -> keep dribbling
+        if fs.ball_is_seen and ball_in_capture_zone(fs, extra_radius_in=CAPTURE_EXIT_EXTRA_IN):
+            return BotCommand(), Mode.DRIBBLE
+
+        # lost it on the way -> get back behind the ball, lined up with the goal
+        if brain.ball_lost_frames > BALL_LOST_FRAMES_MAX:
+            return BotCommand(), Mode.SEARCH
+
+        command, done = rotate_around_ball(fs, FIELD_GOAL_CENTER_TOP)
+        if done:
+            return BotCommand(), Mode.APPROACH_BALL   # lined up -> approach drives in and captures
+        return command, Mode.MANEUVER
 
     # fallback: should never get here
     return BotCommand(), Mode.APPROACH_BALL

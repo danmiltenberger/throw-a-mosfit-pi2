@@ -163,7 +163,7 @@ def get_bot_command(fieldstate: FieldState) -> tuple[BotCommand, str]:
             status = "kicking ball"
 
             fieldstate.our_bot_target_pos = FIELD_GOAL_CENTER_TOP
-            quit("Kicked the ball")
+            # quit("Kicked the ball") #PHOEBE CHANGED I grayed it out
 
         # otherwise move to their goal
         else:
@@ -767,7 +767,7 @@ def get_botcom_from_cam(cs: CameraState, our_goal_is_green_purple: bool = True) 
         bot_command.dur_sec = dur_sec
 
     # if we're more than 100 pixels off from facing it, rotate to the ball
-    elif abs(CAMERA_CENTER_X - cs.ball_pos_px.x) > 100:
+    elif abs(CAMERA_CENTER_X - cs.ball_pos_px.x) > 0: #PHOEBE CHANGED 100 -> 0
         # turn by 10 deg
         rad_10 = math.radians(10)
         bot_command.dur_sec = sec_per_rad * rad_10

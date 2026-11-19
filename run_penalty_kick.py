@@ -21,7 +21,7 @@ def penalty(match_settings, picam):
         row2 = f"US: {match_settings[OUR_TEAM_COLOR]}, LEFT: {match_settings[OUR_LEFT_GOAL]}"
 
 
-        bot_command = BotCommand(BOT_FORWARD, 300)
+        bot_command = BotCommand(BOT_FORWARD, 0.3)
         send_command_to_arduino(command=bot_command)
 
 

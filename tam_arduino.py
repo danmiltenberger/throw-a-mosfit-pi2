@@ -5,6 +5,18 @@ from tam_lcd import write_lcd_lines
 
 
 # to get the port run >python3 -m serial.tools.list_ports -v
+
+_arduino = None
+
+def get_arduino(): # PHOEBE CHANGED I added this function
+    global _arduino
+    if _arduino is None:
+        _arduino = serial.Serial(port=ARDUINO_PORT, baudrate=ARDUINO_BAUD, timeout=1, write_timeout=1)
+        _read_line_starting_with(_arduino, "READY", timeout_sec=5)   # wait for setup() to finish
+        _arduino.reset_input_buffer()
+    return _arduino
+
+
 def send_to_arduino(connection, message):
     """Send one line and return the Arduino's response."""
     connection.write((message + "\n").encode("utf-8"))
@@ -24,7 +36,7 @@ def send_command_to_arduino(command : BotCommand):
 
     print(f"attempting communication with {port}")
 
-    send_str = command.com_str + str((round(command.dur_sec * 1000)))
+    send_str = command.com_str + str(round(command.dur_sec * 1000))  #PHOEBE CHANGED round("already there" * 1000)
 
     print(f"linux sent: {send_str}")
 
