@@ -50,3 +50,8 @@ rpicam-hello --timeout 0
 sudo systemctl stop switches.service      # stop it now
 sudo systemctl disable switches.service   # don't start at boot
 sudo systemctl restart switches.service   # after editing your script
+
+
+### Goals
+center to center horizontal = 48in
+center to center vertical = 23in

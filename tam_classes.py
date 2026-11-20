@@ -87,20 +87,34 @@ class CameraState:
     # define what was in frame
     ball_in_frame : bool = False
     tbot_in_frame : bool = False    # their bot
-    gpgr_in_frame : bool = False    # goalpost green
-    gppr_in_frame : bool = False    # goalpost purple
+    top_green_in_frame : bool = False    
+    bot_green_in_frame : bool = False  
+    top_purpl_in_frame : bool = False
+    bot_purpl_in_frame : bool = False  
+
+    any_green_in_frame : bool = True
+    any_purpl_in_frame : bool = True
 
     # position of objects in the frame
     ball_pos_px : Point = field(default_factory=lambda: Point(0, 0))
     tbot_pos_px : Point = field(default_factory=lambda: Point(0, 0))
-    gpgr_pos_px : Point = field(default_factory=lambda: Point(0, 0))
-    gppr_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+
+
+    top_green_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    bot_green_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+
+    top_purpl_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    bot_purpl_pos_px : Point = field(default_factory=lambda: Point(0, 0))
 
     # percieved width of objects in the frame (used for single cam distance detection)
     ball_width_px : float = 0
     tbot_width_px : float = 0
-    gpgr_width_px : float = 0
-    gppr_width_px : float = 0
+
+    top_green_width_px : float = 0
+    bot_green_width_px : float = 0
+
+    top_purpl_width_px : float = 0
+    bot_purpl_width_px : float = 0
 
 
 @dataclass
