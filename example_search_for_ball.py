@@ -35,7 +35,7 @@ def example_search_for_ball():
         cs_left = get_camerastate(frame_l, search_dict, is_left=True)
         frame_l_anno = draw_camerastate_to_cam(frame_cam=frame_l, cs= cs_left)
 
-        show_frame(frame_l_anno)
+        #show_frame(frame_l_anno)
         duration = 0.1
 
         # if it's not in the frame, rotate until you see it
