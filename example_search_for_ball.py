@@ -1,5 +1,5 @@
 from tam_binocular import get_left_right_frames, setup_left_right_cams
-from tam_frame import concat_frames, show_frame_in_loop
+from tam_frame import concat_frames, show_frame
 from tam_vision import get_camerastate
 from tam_draw import draw_camerastate_to_cam
 from tam_hsv import load_search_dict_from_csv
@@ -30,10 +30,13 @@ def example_search_for_ball():
         frame_l, frame_r = get_left_right_frames(camL, camR)
 
         cs_left = get_camerastate(frame_l, search_dict, is_left=True)
+        frame_l_anno = draw_camerastate_to_cam(frame_cam=frame_l, cs= cs_left)
+
+        show_frame(frame_l_anno)
 
         if cs_left.ball_in_frame == False:
-            print("turning left to look for ball")
             duration = 0.1
+            input("hit a key to execute turn left command")
             send_command(ser, "q", duration= duration)
 
             time.sleep(duration)
