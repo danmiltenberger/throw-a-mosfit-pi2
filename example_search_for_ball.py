@@ -43,7 +43,7 @@ def example_search_for_ball():
         # if it's not in the frame, rotate until you see it
         if cs_left.ball_in_frame == False:
             
-            slow_rotate_and_look = BotCommand(BOT_ROTATE_LEFT, dur_sec=10, speed_percent= 10)
+            slow_rotate_and_look = BotCommand(BOT_ROTATE_LEFT, dur_sec=10, speed_percent= 30)
 
             send_bot_command(ser, slow_rotate_and_look)
 
