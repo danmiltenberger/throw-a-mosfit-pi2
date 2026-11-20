@@ -46,10 +46,52 @@ def get_hsv_frame(frame: np.ndarray) -> np.ndarray:
     return hsv
 
 
-def get_mask_frame(hsv_frame: np.ndarray, hsv_lo, hsv_hi) -> np.ndarray:
-    mask = cv2.inRange(hsv_frame, lowerb=hsv_lo, upperb=hsv_hi)
+import cv2
+import numpy as np
 
+
+def clean_mask(mask: np.ndarray, kernel_size: int = 5) -> np.ndarray:
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)   # remove speckle
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # fill small holes
     return mask
+
+
+def get_red_mask(frame: np.ndarray,
+                 min_saturation: int = 120,
+                 min_value: int = 70,
+                 hue_width: int = 10,
+                 clean: bool = True,
+                 is_hsv: bool = False) -> np.ndarray:
+    '''
+    Return a binary mask (uint8, 0 or 255) of red pixels.
+    Input is a BGR frame by default, or an HSV frame if is_hsv=True.
+    '''
+    if is_hsv:
+        hsv = frame
+    else:
+        if frame.ndim == 3 and frame.shape[2] == 4:
+            frame = frame[:, :, :3]
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    lower1 = np.array([0, min_saturation, min_value])
+    upper1 = np.array([hue_width, 255, 255])
+    lower2 = np.array([179 - hue_width, min_saturation, min_value])
+    upper2 = np.array([179, 255, 255])
+
+    mask = cv2.bitwise_or(cv2.inRange(hsv, lower1, upper1),
+                          cv2.inRange(hsv, lower2, upper2))
+
+    return clean_mask(mask) if clean else mask
+
+
+def get_mask_frame(hsv_frame: np.ndarray, hsv_lo, hsv_hi, is_red: bool = False) -> np.ndarray:
+    if is_red:
+        # Red wraps around the hue axis, so hsv_lo / hsv_hi are ignored
+        return get_red_mask(hsv_frame, is_hsv=True)
+
+    mask = cv2.inRange(hsv_frame, lowerb=hsv_lo, upperb=hsv_hi)
+    return clean_mask(mask)
 
 
 def get_contours(frame_mask: np.ndarray) -> Sequence:
@@ -316,7 +358,10 @@ def get_detection_from_name(obj_name: str, hsv_frame: np.ndarray, search_dict: d
     detection.name = obj_name
     detection.in_frame = False
 
-    mask_frame = get_mask_frame(hsv_frame=hsv_frame, hsv_hi=hsv_hi, hsv_lo=hsv_lo)
+    if obj_name == BALL_RED:
+        mask_frame = get_mask_frame(hsv_frame=hsv_frame, hsv_hi=hsv_hi, hsv_lo=hsv_lo, is_red=True)
+    else:
+        mask_frame = get_mask_frame(hsv_frame=hsv_frame, hsv_hi=hsv_hi, hsv_lo=hsv_lo)
     contours = get_contours(mask_frame)
 
     if contours is None:
