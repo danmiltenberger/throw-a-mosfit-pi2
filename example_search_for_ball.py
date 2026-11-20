@@ -65,7 +65,7 @@ def example_search_for_ball():
 
             # drive to the ball!
             else:
-                input("drive to ball?")
+                #input("drive to ball?")
                 move_closer = BotCommand(BOT_FORWARD, dur_sec=1, speed_percent= 30)
                 send_bot_command(ser, move_closer)
 
