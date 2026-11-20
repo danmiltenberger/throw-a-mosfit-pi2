@@ -35,7 +35,7 @@ def example_search_for_ball():
         frame_l, frame_r = get_left_right_frames(camL, camR)
 
         cs_left = get_camerastate(frame_l, search_dict, is_left=True)
-        frame_l_anno = draw_camerastate_to_cam(frame_cam=frame_l, cs= cs_left)
+        #frame_l_anno = draw_camerastate_to_cam(frame_cam=frame_l, cs= cs_left)
 
         #show_frame(frame_l_anno)
         duration = 0.1
@@ -48,6 +48,8 @@ def example_search_for_ball():
             send_bot_command(ser, slow_rotate_and_look)
 
         else:
+            stop_and_wait = BotCommand(BOT_FORWARD, 5, 0)
+            send_bot_command(ser, stop_and_wait)
             # try and center the ball in the frame
 
             angle_from_bot = calc_angle_from_screen_center(cs_left.ball_pos_px)
@@ -55,12 +57,12 @@ def example_search_for_ball():
 
             if deg_from_bot < -5:
                 #input("centering ball: hit enter to rotate left")
-                careful_left = BotCommand(BOT_ROTATE_LEFT, dur_sec=1, speed_percent= 30)
+                careful_left = BotCommand(BOT_ROTATE_LEFT, dur_sec=0.1, speed_percent= 30)
                 send_bot_command(ser, careful_left)
 
             elif deg_from_bot > 5:
 
-                careful_right = BotCommand(BOT_ROTATE_RIGHT, dur_sec=1, speed_percent= 30)
+                careful_right = BotCommand(BOT_ROTATE_RIGHT, dur_sec=0.1, speed_percent= 30)
                 send_bot_command(ser, careful_right)
 
             # drive to the ball!
