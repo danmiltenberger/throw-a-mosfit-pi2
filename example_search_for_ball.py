@@ -41,7 +41,7 @@ def example_search_for_ball():
         # if it's not in the frame, rotate until you see it
         if cs_left.ball_in_frame == False:
             #input("looking for ball: hit enter to rotate left")
-            send_command(ser, "q", duration= duration)
+            send_command(ser, "q", duration= duration * 2)
 
         else:
             # try and center the ball in the frame
@@ -52,7 +52,7 @@ def example_search_for_ball():
             if deg_from_bot < -5:
                 #input("centering ball: hit enter to rotate left")
                 send_command(ser, "q", duration= duration)
-            elif deg_from_bot > -5:
+            elif deg_from_bot > 5:
                 #input("centering ball: hit enter to rotate right")
                 send_command(ser, "e", duration= duration)
             else:
