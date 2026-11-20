@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict, BotCommand, CameraState
+from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict, CameraState
 import math
 from tam_colors import *
 from tam_constants import *
