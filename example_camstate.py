@@ -1,4 +1,4 @@
-from tam_classes import CameraState, BotCommand
+from tam_classes import CameraState
 from tam_frame import load_image_as_frame, show_frame
 from tam_vision import get_camerastate
 from tam_hsv import load_search_dict_from_csv

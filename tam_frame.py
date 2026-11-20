@@ -355,3 +355,35 @@ def save_frame_as_png_from_video(video_path: str, frame_index: int, save_path: s
     frame = list_frames[frame_index]
 
     save_frame_as_png(frame=frame, file_path=save_path)
+
+
+def overlap_frames(frame_left: np.ndarray, frame_right: np.ndarray, percent_overlap: int = 80) -> np.ndarray:
+    '''show both frames on top of one another with a optional offset. 
+    100% means on top of one another and 0% meeds no overlap at all, just side by side'''
+
+    percent_overlap = max(0, min(100, percent_overlap))
+
+    # Drop the alpha/padding channel if present (e.g. XRGB8888 -> 3 channels)
+    if frame_left.ndim == 3 and frame_left.shape[2] == 4:
+        frame_left = frame_left[:, :, :3]
+    if frame_right.ndim == 3 and frame_right.shape[2] == 4:
+        frame_right = frame_right[:, :, :3]
+
+    # Make the right frame match the left frame's size if they differ
+    h, w = frame_left.shape[:2]
+    if frame_right.shape[:2] != (h, w):
+        frame_right = cv2.resize(frame_right, (w, h))
+
+    # Number of columns the two frames share
+    overlap_px = int(round(w * percent_overlap / 100))
+
+    if overlap_px == 0:
+        return np.hstack((frame_left, frame_right))
+
+    # Left-only strip, 50/50 blended overlap strip, right-only strip
+    left_only = frame_left[:, :w - overlap_px]
+    right_only = frame_right[:, overlap_px:]
+    blended = cv2.addWeighted(frame_left[:, w - overlap_px:], 0.5,
+                              frame_right[:, :overlap_px], 0.5, 0)
+
+    return np.hstack((left_only, blended, right_only))
