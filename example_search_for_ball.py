@@ -6,10 +6,12 @@ from tam_hsv import load_search_dict_from_csv
 from tam_decide import get_botcom_from_cam
 from tam_constants import SCREEN_CENTER_X
 from tam_topdown import calc_angle_from_screen_center
-from run_ard_manually import connect, send_command
+from tam_arduino import send_bot_command, connect
+from tam_commands import BotCommand, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT, BOT_FORWARD
 from picamera2 import Picamera2
 import time
 import math
+import serial
 
 
 def example_search_for_ball():
@@ -40,8 +42,10 @@ def example_search_for_ball():
 
         # if it's not in the frame, rotate until you see it
         if cs_left.ball_in_frame == False:
-            #input("looking for ball: hit enter to rotate left")
-            send_command(ser, "q", duration= duration * 2)
+            
+            slow_rotate_and_look = BotCommand(BOT_ROTATE_LEFT, dur_sec=10, speed_percent= 50)
+
+            send_bot_command(ser, slow_rotate_and_look)
 
         else:
             # try and center the ball in the frame
@@ -51,13 +55,19 @@ def example_search_for_ball():
 
             if deg_from_bot < -5:
                 #input("centering ball: hit enter to rotate left")
-                send_command(ser, "q", duration= duration)
+                careful_left = BotCommand(BOT_ROTATE_LEFT, dur_sec=1, speed_percent= 30)
+                send_bot_command(ser, careful_left)
+
             elif deg_from_bot > 5:
-                #input("centering ball: hit enter to rotate right")
-                send_command(ser, "e", duration= duration)
+
+                careful_right = BotCommand(BOT_ROTATE_RIGHT, dur_sec=1, speed_percent= 30)
+                send_bot_command(ser, careful_right)
+
+            # drive to the ball!
             else:
-                print("go forward? hit any key")
-                send_command(ser, "w", duration=duration * 3)
+                input("drive to ball?")
+                move_closer = BotCommand(BOT_FORWARD, dur_sec=1, speed_percent= 30)
+                send_bot_command(ser, move_closer)
 
 
 

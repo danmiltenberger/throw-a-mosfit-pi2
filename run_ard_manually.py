@@ -2,6 +2,10 @@ import re
 import time
 import serial  # pip install pyserial
 
+
+# class BotCommand
+
+
 VALID_DIRECTIONS = set("WASDQE")
 ARDUINO_MAX_DURATION = 30.0  # matches MAX_DURATION_S in the sketch
 

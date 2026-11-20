@@ -1,113 +1,63 @@
-from tam_classes import BotCommand
 import time
+from tam_commands import (
+    BotCommand,
+    BOT_FORWARD, BOT_BACKWARD, BOT_ROTATE_LEFT, BOT_ROTATE_RIGHT,
+    BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT, ARDUINO_MAX_DURATION
+)
 import serial
-from tam_lcd import write_lcd_lines
 
+# Commands the current Arduino sketch understands
+SUPPORTED_MOVES = {
+    BOT_FORWARD, BOT_BACKWARD, BOT_ROTATE_LEFT,
+    BOT_ROTATE_RIGHT, BOT_STRAFE_LEFT, BOT_STRAFE_RIGHT,
+}
 
-# to get the port run >python3 -m serial.tools.list_ports -v
-ARDUINO_PORT = "/dev/ttyACM0"  # Replace with ard serial port
-ARDUINO_BAUD = 115200          # must match PI_Serial in arduino_main.ino
-
-_arduino = None
-
-def _read_line_starting_with(connection, prefix: str, timeout_sec: float) -> str: # PHOEBE CHANGED I added this function
-    """Read lines until one starts with prefix. The Arduino's debug prints ("dead ahead", etc.) are skipped."""
-    deadline = time.perf_counter() + timeout_sec
-    while time.perf_counter() < deadline:
-        line = connection.readline().decode("utf-8", errors="ignore").strip()
-        if line.startswith(prefix):
-            return line
+def connect(port, baud=9600, timeout=60):
+    """Open the serial port and wait for the Arduino to finish its startup test."""
+    ser = serial.Serial(port, baud, timeout=1)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        line = ser.readline().decode(errors="ignore").strip()
         if line:
             print(f"[arduino] {line}")
-    raise TimeoutError(f"No '{prefix}' from the Arduino within {timeout_sec}s")
+        if line.startswith("Ready"):
+            return ser
+    ser.close()
+    raise TimeoutError("Arduino did not report Ready in time")
 
 
-def get_arduino(): # PHOEBE CHANGED I added this function
-    global _arduino
-    if _arduino is None:
-        _arduino = serial.Serial(port=ARDUINO_PORT, baudrate=ARDUINO_BAUD, timeout=1, write_timeout=1)
-        _read_line_starting_with(_arduino, "READY", timeout_sec=5)   # wait for setup() to finish
-        _arduino.reset_input_buffer()
-    return _arduino
+def format_bot_command(cmd: BotCommand) -> str:
+    """Turn a BotCommand into the wire format, e.g. 'Q_0.500_50'."""
+    letter = cmd.com_str.upper()
+    if letter not in SUPPORTED_MOVES:
+        raise ValueError(
+            f"Command '{cmd.com_str}' isn't supported by the Arduino sketch yet"
+        )
+    if cmd.dur_sec <= 0:
+        raise ValueError("Duration must be positive")
+
+    duration = min(cmd.dur_sec, ARDUINO_MAX_DURATION)
+    percent = max(1, min(100, round(cmd.speed_percent)))  # sketch expects an int 1-100
+    return f"{letter}_{duration:.3f}_{percent}"
 
 
-def close_arduino():
-    """Close the port (call at the end of a match / program)."""
-    global _arduino
-    if _arduino is not None:
-        _arduino.close()
-        _arduino = None
+def send_bot_command(ser, cmd: BotCommand, wait=True):
+    """Format a BotCommand and send it. Blocks until 'Done' unless wait=False."""
+    line = format_bot_command(cmd)
+    ser.write(f"{line}\n".encode())
+    ser.flush()
 
+    if not wait:
+        return
 
-def send_command_to_arduino(command: BotCommand) -> str: # PHOEBE CHANGED I added this function
-    """Send one command, e.g. BotCommand("W", 0.15) -> "W150". Returns the Arduino's ACK line."""
-    arduino = get_arduino()
-
-    send_str = command.com_str + str(round(command.dur_sec * 1000)) #PHOEBE CHANGED round("already there" * 1000)
-    print(f"linux sent: {send_str}")
-
-    arduino.write((send_str + "\n").encode("utf-8"))
-
-    # ACK <command> <left sensor> <right sensor>. Kick/arms block the Arduino ~2.3 s, so allow 3 s.
-    response = _read_line_starting_with(arduino, "ACK", timeout_sec=3)
-    print("Arduino replied:", response)
-
-    write_lcd_lines([
-        f"RPi sent: {send_str}",
-        f"Ard rciv: {response}",
-    ])
-
-    return response
-
-
-if __name__ == "__main__":
-    #bot_command = BotCommand() # PHOEBE CHANGED grayed out
-    #send_command_to_arduino(bot_command) # PHOEBE CHANGED I grayed out
-    from tam_commands import BOT_FORWARD
-    send_command_to_arduino(BotCommand(BOT_FORWARD, 0.2))
-    send_command_to_arduino(BotCommand(BOT_FORWARD, 0.2))   # second one reuses the open port
-    close_arduino()
-
-
-# def send_to_arduino(connection, message): # PHOEBE CHANGED I grayed out
-#     """Send one line and return the Arduino's response."""
-#     connection.write((message + "\n").encode("utf-8"))
-#     connection.flush()
-
-#     reply = connection.readline()
-
-#     if not reply.endswith(b"\n"):
-#         pass
-#         #raise TimeoutError("No complete reply received from the Arduino.")
-
-#     return reply.decode("utf-8").rstrip("\r\n")
-
-
-# def send_command_to_arduino(command : BotCommand): # PHOEBE CHANGED I garyed this out, orginal func
-#     port = "/dev/ttyACM0"  # Replace with ard serial port
-
-#     print(f"attempting communication with {port}")
-
-#     send_str = command.com_str + str(round(command.dur_sec * 1000))  
-
-#     print(f"linux sent: {send_str}")
-
-#     with serial.Serial(
-#         port=port,
-#         baudrate=115200,
-#         timeout=3,
-#         write_timeout=3,
-#     ) as arduino:
-#         # Allow startup time before sending the first message.
-#         time.sleep(2)
-#         arduino.reset_input_buffer()
-
-#         response = send_to_arduino(arduino, send_str)
-#         print("Arduino replied:", response)
-
-#     write_lcd_lines([
-#         f"RPi sent: {send_str}",
-#         f"Ard rciv: {response}",
-#     ])
-
-  
+    deadline = time.time() + min(cmd.dur_sec, ARDUINO_MAX_DURATION) + 5
+    while time.time() < deadline:
+        reply = ser.readline().decode(errors="ignore").strip()
+        if not reply:
+            continue
+        print(f"[arduino] {reply}")
+        if reply.startswith("Error"):
+            raise RuntimeError(reply)
+        if reply == "Done":
+            return
+    raise TimeoutError("No 'Done' response from Arduino")
