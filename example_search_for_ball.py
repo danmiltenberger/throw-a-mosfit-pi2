@@ -36,31 +36,29 @@ def example_search_for_ball():
 
         cs_left = get_camerastate(frame_l, search_dict, is_left=True)
         #frame_l_anno = draw_camerastate_to_cam(frame_cam=frame_l, cs= cs_left)
-
         #show_frame(frame_l_anno)
-        duration = 0.1
 
         # if it's not in the frame, rotate until you see it
         if cs_left.ball_in_frame == False:
             
-            slow_rotate_and_look = BotCommand(BOT_ROTATE_LEFT, dur_sec=10, speed_percent= 30)
+            slow_rotate_and_look = BotCommand(BOT_ROTATE_LEFT, dur_sec=0.5, speed_percent= 30)
 
             send_bot_command(ser, slow_rotate_and_look)
 
         else:
-            stop_and_wait = BotCommand(BOT_FORWARD, 5, 0)
-            send_bot_command(ser, stop_and_wait)
-            # try and center the ball in the frame
 
+            tolerance_plus_minus_deg = 10
+
+            # try and center the ball in the frame
             angle_from_bot = calc_angle_from_screen_center(cs_left.ball_pos_px)
             deg_from_bot = math.degrees(angle_from_bot)
 
-            if deg_from_bot < -5:
+            if deg_from_bot < -tolerance_plus_minus_deg:
                 #input("centering ball: hit enter to rotate left")
                 careful_left = BotCommand(BOT_ROTATE_LEFT, dur_sec=0.1, speed_percent= 30)
                 send_bot_command(ser, careful_left)
 
-            elif deg_from_bot > 5:
+            elif deg_from_bot > tolerance_plus_minus_deg:
 
                 careful_right = BotCommand(BOT_ROTATE_RIGHT, dur_sec=0.1, speed_percent= 30)
                 send_bot_command(ser, careful_right)
