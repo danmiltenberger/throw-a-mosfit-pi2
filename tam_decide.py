@@ -7,7 +7,6 @@ from tam_classes import (
     Point,
     Line,
     FieldState,
-    BotCommand,
     get_capture_zone_point,
     Detection,
     CameraState
