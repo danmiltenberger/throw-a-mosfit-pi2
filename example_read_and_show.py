@@ -4,7 +4,7 @@ from tam_vision import get_camerastate
 from tam_draw import draw_camerastate_to_cam
 from tam_hsv import load_search_dict_from_csv
 from tam_decide import get_botcom_from_cam
-from run_ard_manually import connect, send_bot_com
+from run_ard_manually import connect
 from picamera2 import Picamera2
 
 
@@ -62,7 +62,7 @@ def example_read_and_show():
         # get decisions
         botcom = get_botcom_from_cam(cs_left,)
 
-        send_bot_com(ser, botcom)
+        # send_bot_com(ser, botcom)
 
         combined = concat_frames(frame_l_anno, frame_r_anno, "DOWN")
 

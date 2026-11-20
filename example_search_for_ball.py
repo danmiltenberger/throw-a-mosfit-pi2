@@ -9,7 +9,7 @@ from picamera2 import Picamera2
 import time
 
 
-def example_read_and_show():
+def example_search_for_ball():
 
     # one time setup
 
@@ -37,3 +37,6 @@ def example_read_and_show():
             send_command(ser, "q", duration= duration)
 
             time.sleep(duration)
+
+if __name__ == "__main__":
+    example_search_for_ball()
