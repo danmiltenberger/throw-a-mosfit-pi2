@@ -57,7 +57,7 @@ def example_search_for_ball():
                 send_command(ser, "e", duration= duration)
             else:
                 print("go forward? hit any key")
-                send_command(ser, "w", duration=duration)
+                send_command(ser, "w", duration=duration * 3)
 
 
 
