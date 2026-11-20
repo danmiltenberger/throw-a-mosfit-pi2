@@ -28,7 +28,7 @@ while True:
     cs_right = get_camerastate(frame_r, search_dict)
 
     frame_l = draw_camerastate_to_cam(frame_l, cs_left)
-    frame_r = draw_camerastate_to_cam(frame_r, cs_left)
+    frame_r = draw_camerastate_to_cam(frame_r, cs_right)
 
     combined = overlap_frames(frame_l, frame_r, overlap)
 
