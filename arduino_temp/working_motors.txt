@@ -197,8 +197,8 @@ void readSerial() {
 void setup() {
   Serial.begin(9600);
   delay(1000);
-
-  runStartupTest();
+//
+//  runStartupTest();
 
   // Discard anything typed during the blocking test so it isn't run afterward
   while (Serial.available() > 0) Serial.read();
