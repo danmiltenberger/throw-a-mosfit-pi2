@@ -5,9 +5,11 @@ from tam_draw import draw_camerastate_to_cam
 from tam_hsv import load_search_dict_from_csv
 from tam_decide import get_botcom_from_cam
 from tam_constants import SCREEN_CENTER_X
+from tam_topdown import calc_angle_from_screen_center
 from run_ard_manually import connect, send_command
 from picamera2 import Picamera2
 import time
+import math
 
 
 def example_search_for_ball():
@@ -38,19 +40,24 @@ def example_search_for_ball():
 
         # if it's not in the frame, rotate until you see it
         if cs_left.ball_in_frame == False:
-            input("looking for ball: hit enter to rotate left")
+            #input("looking for ball: hit enter to rotate left")
             send_command(ser, "q", duration= duration)
 
         else:
             # try and center the ball in the frame
 
-            # if it's to the left of the bot
-            if cs_left.ball_pos_px.x <= SCREEN_CENTER_X:
-                input("centering ball: hit enter to rotate left")
+            angle_from_bot = calc_angle_from_screen_center(cs_left.ball_pos_px)
+            deg_from_bot = math.degrees(angle_from_bot)
+
+            if deg_from_bot < -5:
+                #input("centering ball: hit enter to rotate left")
                 send_command(ser, "q", duration= duration)
-            else:
-                input("centering ball: hit enter to rotate right")
+            elif deg_from_bot > -5:
+                #input("centering ball: hit enter to rotate right")
                 send_command(ser, "e", duration= duration)
+            else:
+                print("go forward? hit any key")
+                send_command(ser, "w", duration=duration)
 
 
 
