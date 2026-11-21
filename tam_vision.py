@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 import math
-from tam_classes import FieldState, Point, Detection, CameraState, GantryState
+from tam_classes import FieldState, Point, Detection, CameraState
 from tam_constants import (
     BALL_RED,
     HSV_HI,
@@ -254,66 +254,7 @@ def search_for_ball(
     return fieldstate
 
 
-def search_for_bot(
-    hsv_frame: np.ndarray, fieldstate: FieldState, search_dict: dict
-) -> FieldState:
 
-    if fieldstate.our_team_color == YELLOW:
-        search_name = HAT_BLUE
-    elif fieldstate.our_team_color == BLUE:
-        search_name = HAT_YELLOW
-    else:
-        raise ValueError(
-            f"Our team color is not YELLOW or BLUE, recieved {fieldstate.our_team_color}"
-        )
-
-    object_info = get_object_info_from_name(
-        search_dict=search_dict, hsv_frame=hsv_frame, obj_name=search_name
-    )
-
-    known_width_in = search_dict[search_name][KNOWN_WIDTH]
-    width_px = object_info[WIDTH_PX]
-    screen_x = object_info[CENTER_X_PX]
-    screen_y = object_info[CENTER_Y_PX]
-
-    ball_distance_in = calc_distance_from_bot(known_width_in, width_px)
-
-    screen_center = Point(screen_x, screen_y)
-    ball_angle_rad = calc_angle_from_screen_center(screen_center)
-
-    fieldstate.their_bot_pos_in = convert_to_field(
-        object_bearing_rad=ball_angle_rad,
-        object_dis=ball_distance_in,
-        robot_bearing_rad=fieldstate.our_bot_bearing_rad,
-        robot_pos=fieldstate.our_bot_pos_in,
-    )
-
-    return fieldstate
-
-
-def get_fieldstate_from_frame(
-    frame: np.ndarray, prev_fieldstate: FieldState | None, search_dict: dict
-) -> FieldState:
-    """Look through the frame and determine objects, positions, etc"""
-
-    # some determinations require previous values. If not supplied, use defaults
-    if prev_fieldstate is None:
-        prev_fieldstate = FieldState()
-
-    # start by assuming that nothing has changed, to be overwritten below
-    new_fieldstate = prev_fieldstate
-
-    hsv_frame = get_hsv_frame(frame)
-
-    # search for ball
-    new_fieldstate = search_for_ball(hsv_frame, new_fieldstate, search_dict)
-
-    # search for bot
-    new_fieldstate = search_for_bot(hsv_frame, new_fieldstate, search_dict)
-
-    # search for goalposts
-
-    return new_fieldstate
 
 
 def get_annotated_frame(frame: np.ndarray, search_dict: dict) -> np.ndarray:
@@ -642,22 +583,17 @@ def determine_goal_in_frame(cs : CameraState, our_left_is_green: bool) -> Camera
         return cs
 
 
-def get_gantrystate(cs_left: CameraState, cs_right: CameraState) -> GantryState:
-    '''merge both camerastates to a single gantrystate with more accurate range finding'''
 
 
-    gs = GantryState()
-    side_c = gs.camera_center_to_center_in
 
-    if cs_left.ball_in_frame and cs_right.ball_in_frame:
-        alpha = np.pi/2 - calc_angle_from_screen_center(cs_left.ball_pos_px)
-        beta = np.pi/2 - calc_angle_from_screen_center(cs_right.ball_pos_px)
+def get_fieldstate(cs_left: CameraState, cs_right: CameraState, prev_pos: Point, prev_rad : float) -> FieldState:
+    '''given two camera states, determine the state of the field by 
+    first updating the bot's pose with respect to the fixed goalposts, then 
+    updating the position of other objects with respect to the bot's pose'''
 
-        gamma = np.pi - alpha - beta
-        
-        # using law of sines to solve
-        twoR = side_c / math.sin(gamma)
+    fs = FieldState()
 
-        side_b = twoR * math.sin(beta)
-        
-    return gs
+
+
+
+    return fs

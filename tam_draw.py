@@ -5,7 +5,6 @@ import math
 from tam_colors import *
 from tam_constants import *
 from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot, convert_to_field
-from tam_decide import determine_goalpost_position, get_detection_lines, get_detection_dict
 from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER, FIELD_GOALBOX_CENTER_BOTTOM
 
 
@@ -1101,37 +1100,6 @@ def draw_circle_to_frame(frame: np.ndarray, center: Point, radius: int, color: t
     return frame
 
 
-def draw_detection_to_camera_frame(camera_frame: np.ndarray, detection: Detection, draw_arrow: bool = True) -> np.ndarray:
-    '''draw a circle around the detection in the camera frame if possible'''
-
-    
-
-    if detection.in_frame == False:
-        return camera_frame
-
-    draw_color = color_dict[detection.name]
-    camera_frame = draw_circle_to_frame(camera_frame, detection.camera_pos_px, radius= int(detection.width_px/2), color=draw_color)
-
-    detect_lines = get_detection_lines(detection)
-
-    if draw_arrow:
-        camera_frame = draw_arrow_point_to_point(frame=camera_frame, start= CAMERA_CENTER_BOTTOM, end= detection.camera_pos_px, color=draw_color)
-
-    
-    camera_frame = add_text_left_of_point(camera_frame, center_left= detection.camera_pos_px, lines=detect_lines, left_offset= int((detection.width_px/2)*1.2) )
-
-
-    return camera_frame
-
-
-def draw_detection_list_to_camera_frame(camera_frame: np.ndarray, detect_list : list[Detection]) -> np.ndarray:
-
-    for detection in detect_list:
-        detection : Detection
-
-        camera_frame = draw_detection_to_camera_frame(camera_frame, detection)
-
-    return camera_frame
 
 
 
@@ -1246,124 +1214,6 @@ def draw_angle_lines_on_camera_frame(
     return frame
 
 
-def draw_fieldstate(field_frame: np.ndarray, fieldstate: FieldState, draw_arrows: bool = True) -> np.ndarray:
-
-    # draw our bot
-    field_frame = draw_robot_to_field(
-        field_frame= field_frame,
-        bearing_rad= fieldstate.our_bot_bearing_rad,
-        pos_in= clamp_to_field(fieldstate.our_bot_pos_in, "bot_us"),
-        color= fieldstate.our_team_color
-    )
-
-    # draw the ball
-    if fieldstate.ball_is_seen:
-
-        if fieldstate.ball_is_ours:
-            outline_color = fieldstate.our_team_color
-        elif fieldstate.ball_is_theirs:
-            outline_color = fieldstate.their_team_color
-        else:
-            outline_color = BLACK
-
-        field_frame = draw_ball_to_field(
-            field_frame= field_frame,
-            ball_pos_in= clamp_to_field(fieldstate.ball_pos_in, "ball"),
-            outline_color= outline_color
-        )
-
-        if draw_arrows:
-            field_frame = draw_arrow_point_to_point(
-                frame=field_frame,
-                start= inches_to_screen(fieldstate.our_bot_pos_in),
-                end= inches_to_screen(fieldstate.ball_pos_in),
-                color= RED,
-            )
-
-    # draw the opponent
-    if fieldstate.their_bot_is_seen:
-        field_frame = draw_robot_to_field(
-            field_frame= field_frame,
-            bearing_rad= fieldstate.their_bot_bearing_rad,
-            pos_in= clamp_to_field(fieldstate.their_bot_pos_in, "bot_them"),
-            color= fieldstate.their_team_color
-        )
-
-        if draw_arrows:
-            field_frame = draw_arrow_point_to_point(
-                frame=field_frame,
-                start= inches_to_screen(fieldstate.our_bot_pos_in),
-                end= inches_to_screen(fieldstate.their_bot_pos_in),
-                color= fieldstate.their_team_color
-            )
-
-
-    
-    return field_frame
-
-
-
-def draw_detection_left_right_to_frame_left(
-        frame_camera_left: np.ndarray, 
-        detection_left: Detection, 
-        detection_right: Detection,
-        draw_arrows: bool = False) -> np.ndarray:
-    '''
-    Draw circles around detections and arrows to the detections on the camera frame. Using the left frame, draw arrows from the bottom left third and right third,
-    simulating two eyes without needing to show both camera frames
-    '''
-
-    point_bottom_left_third = Point(int(CAMERA_CAPTURE_X / 3), CAMERA_CAPTURE_Y)
-    point_bottom_right_third = Point(int(CAMERA_CAPTURE_X * 2 /3), CAMERA_CAPTURE_Y)
-
-    draw_color = get_draw_color(detection_left)
-
-    # if the right cam sees what the left doesn't draw an arrow to the middle right to show it's over there
-    point_middle_right = Point(CAMERA_CAPTURE_X, SCREEN_CENTER_Y)
-
-    # if neither see it, return the unchanged frame
-    if (detection_left.in_frame == False) and (detection_right.in_frame == False):
-        return frame_camera_left
-
-    # if only the left sees it, draw the arrow from bottom left third to detection
-    elif (detection_left.in_frame == True) and (detection_right.in_frame == False):
-        frame_camera_left = draw_detection_to_camera_frame(frame_camera_left, detection_left, draw_arrow= False)
-
-        if draw_arrows:
-            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
-
-    # if only the right sees it, draw the arrow from bottom right third to off screen
-    elif (detection_left.in_frame == False) and (detection_right.in_frame == True):
-        
-        if draw_arrows:
-            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= point_middle_right, color= draw_color)
-
-    # if both see it, draw an arrow from both bottom thirds
-    else:
-        frame_camera_left = draw_detection_to_camera_frame(frame_camera_left, detection_left, draw_arrow= False)
-        
-        if draw_arrows:
-            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_left_third, end= detection_left.camera_pos_px, color= draw_color)
-            frame_camera_left = draw_arrow_point_to_point(frame_camera_left, start= point_bottom_right_third, end= detection_left.camera_pos_px, color= draw_color)
-
-    return frame_camera_left
-
-
-def draw_two_cams_to_one(
-        frame_camera_left: np.ndarray, 
-        list_detections_left: list[Detection], 
-        list_detections_right: list[Detection],
-        draw_arrows: bool = False) -> np.ndarray:
-    '''
-    Draw circles around detections and arrows to the detections on the camera frame. Using the left frame, draw arrows from the bottom left third and right third,
-    simulating two eyes without needing to show both camera frames
-    '''
-
-    for detect_left, detect_right in zip(list_detections_left, list_detections_right):
-        frame_camera_left = draw_detection_left_right_to_frame_left(frame_camera_left, detect_left, detect_right, draw_arrows)
-
-
-    return frame_camera_left
 
 
 def get_lcd_frame(list_lines: list[str]) -> np.ndarray:
@@ -1472,34 +1322,7 @@ def get_lcd_frame(list_lines: list[str]) -> np.ndarray:
     return frame
 
 
-def get_lcd_lines(fieldstate : FieldState) -> list[str]:
-    ball_pos = "???"
 
-    # or X,Y so either way 3 char
-    if fieldstate.ball_is_seen:
-        ball_pos = f"{round(fieldstate.ball_pos_in.x)},{round(fieldstate.ball_pos_in.y)}"
-
-    their_bot_pos ="???"
-    if fieldstate.their_bot_is_seen:
-        their_bot_pos = f"{round(fieldstate.their_bot_pos_in.x)},{round(fieldstate.their_bot_pos_in.y)}"
-
-    our_bot_pos = f"{round(fieldstate.our_bot_pos_in.x)},{round(fieldstate.our_bot_pos_in.y)}"        # (0.0,0.0)
-    our_bot_command = fieldstate.com_str + str(round(fieldstate.com_dur_sec,1))     # something like W1.1
-
-    row1 = fieldstate.status_str
-    row2 = f"us {our_bot_pos} op {their_bot_pos}"
-    row3 = f"ball {ball_pos}"
-    row4 = f"com {our_bot_command}"
-
-    return [row1, row2, row3, row4]
-
-
-def get_lcd_frame_fieldstate(fieldstate: FieldState) -> np.ndarray:
-    '''get the lcd frame with text from a given fieldstate'''
-    list_lines = get_lcd_lines(fieldstate)
-
-    lcd_frame = get_lcd_frame(list_lines= list_lines)
-    return lcd_frame
 
 
 def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is_yellow: bool = True, our_left_is_green: bool = True) -> np.ndarray:

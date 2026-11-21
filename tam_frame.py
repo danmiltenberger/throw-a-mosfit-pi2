@@ -357,7 +357,7 @@ def save_frame_as_png_from_video(video_path: str, frame_index: int, save_path: s
     save_frame_as_png(frame=frame, file_path=save_path)
 
 
-def overlap_frames(frame_left: np.ndarray, frame_right: np.ndarray, percent_overlap: int = 80) -> np.ndarray:
+def overlap_frames(frame_left: np.ndarray, frame_right: np.ndarray, percent_overlap: int = 100) -> np.ndarray:
     '''show both frames on top of one another with a optional offset. 
     100% means on top of one another and 0% meeds no overlap at all, just side by side'''
 

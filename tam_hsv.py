@@ -4,7 +4,6 @@ import numpy as np
 from tam_constants import *
 from tam_frame import load_image_as_frame, show_frame
 from tam_vision import get_hsv_frame
-from tam_draw import draw_detection_list_to_camera_frame
 
 photos_and_vids_dir = TRAINING_DATA
 hsv_dir = HSV_BOUNDS
