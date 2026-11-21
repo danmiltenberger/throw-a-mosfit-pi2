@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from tam_constants import *
 from tam_frame import load_image_as_frame, show_frame
-from tam_vision import get_hsv_frame, get_list_detections
+from tam_vision import get_hsv_frame
 from tam_draw import draw_detection_list_to_camera_frame
 
 photos_and_vids_dir = TRAINING_DATA
@@ -32,9 +32,9 @@ def main():
 
     search_dict = load_search_dict_from_csv()
 
-    list_detections = get_list_detections(hsv_frame=frame_hsv, search_dict=search_dict)
-    frame_annotated = draw_detection_list_to_camera_frame(frame, list_detections)
-    show_frame(frame_annotated)
+    # list_detections = get_list_detections(hsv_frame=frame_hsv, search_dict=search_dict)
+    # frame_annotated = draw_detection_list_to_camera_frame(frame, list_detections)
+    # show_frame(frame_annotated)
 
 
 

@@ -296,13 +296,18 @@ def draw_arrow_point_to_point(
     return frame
 
 
-def draw_line_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK) -> np.ndarray:
+def draw_line_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK, thickness: int = 1, is_in_inches: bool = False) -> np.ndarray:
+
+    if is_in_inches:
+        start = inches_to_screen(start)
+        end = inches_to_screen(end)
+    
     frame = cv2.line(
         img= frame,
         pt1= get_point_int_tuple(start),
         pt2= get_point_int_tuple(end),
         color= color,
-        thickness= 1
+        thickness= thickness
     )
 
     return frame
@@ -1129,22 +1134,6 @@ def draw_detection_list_to_camera_frame(camera_frame: np.ndarray, detect_list : 
     return camera_frame
 
 
-def draw_detection_to_field(
-        field_frame: np.ndarray, 
-        detection: Detection, 
-        robot_pos: Point = FIELD_GOALBOX_CENTER_BOTTOM, 
-        robot_bearing: float = BEARING_NORTH,
-        draw_arrow: bool = False,
-        draw_lines : bool = False) -> np.ndarray:
-    if detection.in_frame == False:
-        return field_frame
-
-    detection_pos_in : Point = convert_to_field(
-        object_bearing_rad= detection.ang_from_bot_rad,
-        object_dis= detection.dis_from_bot_in,
-        robot_bearing_rad= robot_bearing,
-        robot_pos= robot_pos
-    )
 
     if detection.name == BALL_RED:
         field_frame = draw_ball_to_field(
@@ -1531,37 +1520,74 @@ def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is
             center_left= cs.ball_pos_px
         )
 
-    if cs.gpgr_in_frame:
+    # green down
+    if cs.gp_green_dw_in_frame:
         frame_cam = draw_circle_to_frame(
             frame= frame_cam,
-            center= cs.gpgr_pos_px,
-            radius= int(cs.gpgr_width_px/2),
+            center= cs.gp_green_dw_pos_px,
+            radius= int(cs.gp_green_dw_width_px/2),
             color= GREEN
         )
 
-        rad = calc_angle_from_screen_center(cs.gpgr_pos_px)
+        rad = calc_angle_from_screen_center(cs.gp_green_dw_pos_px)
 
         frame_cam = add_text_left_of_point(
             frame_cam, 
             [str(round(math.degrees(rad),1)) + "deg"],
-            center_left= cs.gpgr_pos_px
+            center_left= cs.gp_green_dw_pos_px
         )
 
-    if cs.gppr_in_frame:
+    # green up
+    if cs.gp_green_up_in_frame:
         frame_cam = draw_circle_to_frame(
             frame= frame_cam,
-            center= cs.gppr_pos_px,
-            radius= int(cs.gppr_width_px/2),
+            center= cs.gp_green_up_pos_px,
+            radius= int(cs.gp_green_up_width_px/2),
+            color= GREEN
+        )
+
+        rad = calc_angle_from_screen_center(cs.gp_green_up_pos_px)
+
+        frame_cam = add_text_left_of_point(
+            frame_cam, 
+            [str(round(math.degrees(rad),1)) + "deg"],
+            center_left= cs.gp_green_up_pos_px
+        )
+
+    # purple down
+    if cs.gp_purpl_dw_in_frame:
+        frame_cam = draw_circle_to_frame(
+            frame= frame_cam,
+            center= cs.gp_purpl_dw_pos_px,
+            radius= int(cs.gp_purpl_dw_width_px/2),
             color= FUCHSIA
         )
 
-        rad = calc_angle_from_screen_center(cs.gppr_pos_px)
+        rad = calc_angle_from_screen_center(cs.gp_purpl_dw_pos_px)
 
         frame_cam = add_text_left_of_point(
             frame_cam, 
             [str(round(math.degrees(rad),1)) + "deg"],
-            center_left= cs.gppr_pos_px
+            center_left= cs.gp_purpl_dw_pos_px
         )
+
+    # purple up
+    if cs.gp_purpl_up_in_frame:
+        frame_cam = draw_circle_to_frame(
+            frame= frame_cam,
+            center= cs.gp_purpl_up_pos_px,
+            radius= int(cs.gp_purpl_up_width_px/2),
+            color= FUCHSIA
+        )
+
+        rad = calc_angle_from_screen_center(cs.gp_purpl_up_pos_px)
+
+        frame_cam = add_text_left_of_point(
+            frame_cam, 
+            [str(round(math.degrees(rad),1)) + "deg"],
+            center_left= cs.gp_purpl_up_pos_px
+        )
+
 
     opponent_color = BLUE if our_team_is_yellow else YELLOW
 
@@ -1574,45 +1600,66 @@ def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is
         )
 
     # draw a line from goalpost to goalpost if possible
-    if cs.gppr_in_frame and cs.gpgr_in_frame:
-        frame_cam = draw_line_point_to_point(
-            color= WHITE,
-            start= cs.gppr_pos_px,
-            end= cs.gpgr_pos_px,
-            frame= frame_cam
-        )
-
-        midpoint = Point(
-            x= 0.5 * (cs.gppr_pos_px.x + cs.gpgr_pos_px.x),
-            y= 0.5 * (cs.gppr_pos_px.y + cs.gpgr_pos_px.y),
-        )
-
-        # if green is more left than purple
-        if cs.gpgr_pos_px.x < cs.gppr_pos_px.x:
-            label = "GREEN-PURPLE"
-        else:
-            label = "PURPLE_GREEN"
-
-        if our_left_is_green:
-            if label == "GREEN-PURPLE":
-                subtitle = "OPPONENT GOAL"
-            else:
-                subtitle = "OUR GOAL"
-        else:
-            if label == "GREEN-PURPLE":
-                subtitle = "OUR GOAL"
-            else:
-                subtitle = "OPPONENT GOAL"
-        
-        frame_cam = add_text_left_of_point(
-            center_left= midpoint,
-            color= BLACK,
-            frame= frame_cam,
-            lines= [label, subtitle]
-        )
-
+    frame_cam = draw_goalpost_lines(cs, frame_cam)
 
     return frame_cam
+
+
+def draw_goalpost_lines(cs : CameraState, frame : np.ndarray) -> np.ndarray:
+    '''draw lines showing the outline of the goal and if it is ours or our opponents'''
+
+    thickness = 2
+
+    if cs.our_goal_in_frame:
+        goal_outline = RED
+    elif cs.their_goal_in_frame:
+        goal_outline = GREEN
+    else:
+        goal_outline = WHITE
+
+    # top line
+    if cs.gp_purpl_up_in_frame and cs.gp_green_up_in_frame:
+        frame = draw_line_point_to_point(
+            color= goal_outline,
+            start= cs.gp_purpl_up_pos_px,
+            end= cs.gp_green_up_pos_px,
+            frame= frame,
+            thickness=thickness
+        )
+
+    # bottom line
+    if cs.gp_purpl_dw_in_frame and cs.gp_green_dw_in_frame:
+        frame = draw_line_point_to_point(
+            color= goal_outline,
+            start= cs.gp_purpl_dw_pos_px,
+            end= cs.gp_green_dw_pos_px,
+            frame= frame,
+            thickness=thickness
+        )
+
+    # green side
+    if cs.gp_green_dw_in_frame and cs.gp_green_up_in_frame:
+        frame = draw_line_point_to_point(
+            color= goal_outline,
+            start= cs.gp_green_dw_pos_px,
+            end= cs.gp_green_up_pos_px,
+            frame= frame,
+            thickness=thickness
+        )
+
+    # purple side
+    if cs.gp_purpl_dw_in_frame and cs.gp_purpl_up_in_frame:
+        frame = draw_line_point_to_point(
+            color= goal_outline,
+            start= cs.gp_purpl_dw_pos_px,
+            end= cs.gp_purpl_up_pos_px,
+            frame= frame,
+            thickness=thickness
+        )
+
+
+    return frame
+
 
 
 def format_lcd_line(left, right, width=20):

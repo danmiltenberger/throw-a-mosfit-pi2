@@ -52,11 +52,6 @@ class Detection:
     width_px : int = 0
     area_px : int = 0
 
-    dis_from_bot_in : float = 0
-    ang_from_bot_rad : float = 0
-
-    def __str__(self) -> str:
-        return f"{self.name}\t{round(self.dis_from_bot_in,1)}in\t{round(math.degrees(self.ang_from_bot_rad))}deg"
 
 
 
@@ -86,21 +81,34 @@ class CameraState:
 
     # define what was in frame
     ball_in_frame : bool = False
-    tbot_in_frame : bool = False    # their bot
-    gpgr_in_frame : bool = False    # goalpost green
-    gppr_in_frame : bool = False    # goalpost purple
+    tbot_in_frame : bool = False    
+
+    gp_green_up_in_frame : bool = False    # up
+    gp_green_dw_in_frame : bool = False    # down
+
+    gp_purpl_up_in_frame : bool = False
+    gp_purpl_dw_in_frame : bool = False
+
+    our_goal_in_frame : bool = False
+    their_goal_in_frame : bool = False
 
     # position of objects in the frame
     ball_pos_px : Point = field(default_factory=lambda: Point(0, 0))
     tbot_pos_px : Point = field(default_factory=lambda: Point(0, 0))
-    gpgr_pos_px : Point = field(default_factory=lambda: Point(0, 0))
-    gppr_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+
+    gp_green_up_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    gp_green_dw_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+
+    gp_purpl_up_pos_px : Point = field(default_factory=lambda: Point(0, 0))
+    gp_purpl_dw_pos_px : Point = field(default_factory=lambda: Point(0, 0))
 
     # percieved width of objects in the frame (used for single cam distance detection)
     ball_width_px : float = 0
     tbot_width_px : float = 0
-    gpgr_width_px : float = 0
-    gppr_width_px : float = 0
+    gp_purpl_up_width_px : float = 0
+    gp_purpl_dw_width_px : float = 0
+    gp_green_up_width_px : float = 0
+    gp_green_dw_width_px : float = 0
 
 
 @dataclass

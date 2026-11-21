@@ -345,25 +345,14 @@ def get_annotated_frame(frame: np.ndarray, search_dict: dict) -> np.ndarray:
     return annotated_frame
 
 
-def get_detection_from_name(obj_name: str, hsv_frame: np.ndarray, search_dict: dict) -> Detection:
-    
-    # load values to create the mask etc
+def create_mask(obj_name: str, hsv_frame: np.ndarray, search_dict: dict) -> np.ndarray:
     hsv_lo = search_dict[obj_name][HSV_LO]
     hsv_hi = search_dict[obj_name][HSV_HI]
-    known_width_in = search_dict[obj_name][KNOWN_WIDTH]
-    min_area_px = int(search_dict[obj_name][MIN_AREA_PX])
+    is_red = obj_name == BALL_RED
+    return get_mask_frame(hsv_frame=hsv_frame, hsv_hi=hsv_hi, hsv_lo=hsv_lo, is_red=is_red)
 
-    # create the thing to be returned
-    detection = Detection()
-    detection.name = obj_name
-    detection.in_frame = False
 
-    if obj_name == BALL_RED:
-        mask_frame = get_mask_frame(hsv_frame=hsv_frame, hsv_hi=hsv_hi, hsv_lo=hsv_lo, is_red=True)
-    else:
-        mask_frame = get_mask_frame(hsv_frame=hsv_frame, hsv_hi=hsv_hi, hsv_lo=hsv_lo)
-    contours = get_contours(mask_frame)
-
+def validate_contours(contours) -> None:
     if contours is None:
         raise TypeError("contours must not be None")
 
@@ -373,62 +362,55 @@ def get_detection_from_name(obj_name: str, hsv_frame: np.ndarray, search_dict: d
             f"got {type(contours).__name__}"
         )
 
-    # if no contours, it isn't in frame
-    if len(contours) == 0:
-        detection.in_frame = False
-        return detection
-
-    # look for the largest contour in the frame
-    largest_area_px : float = 0
-    largest_contour  = contours[0]
-
     for contour in contours:
         if not isinstance(contour, np.ndarray):
             raise TypeError("each contour must be a numpy.ndarray")
 
         if contour.ndim != 3 or contour.shape[1] != 1 or contour.shape[2] != 2:
             raise ValueError(
-                "each contour must have shape (N, 1, 2), " f"got {contour.shape}"
+                f"each contour must have shape (N, 1, 2), got {contour.shape}"
             )
 
-        area = cv2.contourArea(contour)
 
-        if area >= largest_area_px:
-            largest_area_px = area
-            largest_contour = contour
-
-    # if it's smaller than the min area, discard
-    if largest_area_px < min_area_px:
-        detection.in_frame = False
-        return detection
-
-    # else analyze as a circle
-    center, radius = cv2.minEnclosingCircle(largest_contour)
-
-    detection.in_frame = True
-    detection.camera_pos_px = Point(center[0], center[1])
-    detection.width_px = int(radius * 2)
-    detection.area_px = int(np.pi * radius * radius)
-
-    # convert to distance and angle
-    detection.ang_from_bot_rad = calc_angle_from_screen_center(detection.camera_pos_px)
-    detection.dis_from_bot_in = calc_distance_from_bot(known_width_in=known_width_in, percieved_width_px= detection.width_px)
-
-    return detection
+def filter_contours_by_area(contours, min_area_px: int) -> list:
+    return [c for c in contours if cv2.contourArea(c) >= min_area_px]
 
 
-def get_list_detections(hsv_frame: np.ndarray, search_dict: dict) -> list[Detection]:
-    '''search through the frame and return a list of a specific dataclass called a Detection'''
-    detect_list = []
+def contour_to_detection(obj_name: str, contour: np.ndarray) -> Detection:
+    (cx, cy), radius = cv2.minEnclosingCircle(contour)
 
-    search_list = [BALL_RED, HAT_BLUE, HAT_YELLOW, HAT_FUCHSIA, HAT_GREEN]
+    return Detection(
+        name=obj_name,
+        in_frame=True,
+        camera_pos_px=Point(cx, cy),
+        width_px=int(radius * 2),
+        area_px=int(np.pi * radius * radius),
+    )
 
-    for name in search_list:
 
-        detection = get_detection_from_name(name, hsv_frame, search_dict)
-        detect_list.append(detection)
+def sort_top_to_bottom(detections: list[Detection]) -> list[Detection]:
+    # smaller y = higher on screen
+    return sorted(detections, key=lambda d: d.camera_pos_px.y)
 
-    return detect_list
+
+def get_detections_from_name(
+    obj_name: str,
+    hsv_frame: np.ndarray,
+    search_dict: dict,
+    max_detections: int,
+) -> list[Detection]:
+    """Return up to max_detections detections, highest on screen first.
+    Returns an empty list if nothing is found."""
+    min_area_px = int(search_dict[obj_name][MIN_AREA_PX])
+
+    mask_frame = create_mask(obj_name, hsv_frame, search_dict)
+    contours = get_contours(mask_frame)
+    validate_contours(contours)
+
+    valid_contours = filter_contours_by_area(contours, min_area_px)
+    detections = [contour_to_detection(obj_name, c) for c in valid_contours]
+
+    return sort_top_to_bottom(detections)[:max_detections]
 
 
 def example_vision_full_stack(
@@ -502,54 +484,162 @@ def example_vision_full_stack(
     return combined_frame
 
 
-def get_camerastate(frame_camera: np.ndarray, search_dict: dict, is_left: bool = True, our_team_is_yellow: bool = True) -> CameraState:
-    '''from the camera frame, return a CameraState, a package of all necessary information from the frame'''
+def get_camerastate(
+        frame_camera: np.ndarray, 
+        search_dict:dict, 
+        is_left: bool = True,
+        our_left_is_green : bool = True
+        ) -> CameraState:
+    '''wrapper for get_camerastate_filtered but includes all'''
+
+    search_list = [BALL_RED, HAT_BLUE, HAT_YELLOW, HAT_FUCHSIA, HAT_GREEN]
+
+    cs = get_camerastate_filtered(
+        search_list= search_list,
+        search_dict= search_dict,
+        frame_camera= frame_camera,
+        is_left= is_left,
+        our_left_is_green= our_left_is_green
+    )
+
+    return cs
+
+
+
+
+def get_camerastate_filtered(
+        frame_camera: np.ndarray, 
+        search_dict:dict, 
+        search_list: list[str], 
+        is_left: bool = True,
+        our_left_is_green : bool = True
+        ) -> CameraState:
+    '''search the camera for the specified search list instead of doing the entire thing'''
 
     cs = CameraState()
     cs.is_left_camera = is_left
 
-    # get detections
     hsv_frame = get_hsv_frame(frame_camera.copy())
-    list_detections = get_list_detections(hsv_frame, search_dict)
-    dict_detections = get_detection_dict(list_detections)
 
-    # unpack the detections
-    ball_detection = dict_detections[BALL_RED]
-    gpgr_detection = dict_detections[HAT_GREEN]
-    gppr_detection = dict_detections[HAT_FUCHSIA]
+    if BALL_RED in search_list:
+        ball_detect = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=1, obj_name=BALL_RED)[0]
+        if ball_detect.in_frame:
+            cs.ball_in_frame = True
+            cs.ball_pos_px = ball_detect.camera_pos_px
+            cs.ball_width_px = ball_detect.width_px
 
-    # just in case there are two hats, determine which one is ours
-    if our_team_is_yellow:
-        tbot_detection = dict_detections[HAT_BLUE]
-    else:
-        tbot_detection = dict_detections[HAT_YELLOW]
+    if HAT_YELLOW in search_list:
+        tbot_detect_list = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=1, obj_name=HAT_YELLOW)
+        if len(tbot_detect_list) == 0:
+            pass
+        else: 
+            tbot_detect = tbot_detect_list[0]
+            if tbot_detect.in_frame:
+                cs.tbot_in_frame = True
+                cs.tbot_pos_px = tbot_detect.camera_pos_px
+                cs.tbot_width_px = tbot_detect.width_px
 
-    # assign detections to CameraState
-    # ball
-    if ball_detection.in_frame:
-        cs.ball_in_frame = True
-        cs.ball_pos_px = ball_detection.camera_pos_px
-        cs.ball_width_px = ball_detection.width_px
+    if HAT_BLUE in search_list:
+        tbot_detect_list = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=1, obj_name=HAT_BLUE)
+        if len(tbot_detect_list) == 0:
+            pass
+        else: 
+            tbot_detect = tbot_detect_list[0]
+            if tbot_detect.in_frame:
+                cs.tbot_in_frame = True
+                cs.tbot_pos_px = tbot_detect.camera_pos_px
+                cs.tbot_width_px = tbot_detect.width_px
 
-    # goalpost green
-    if gpgr_detection.in_frame:
-        cs.gpgr_in_frame = True
-        cs.gpgr_pos_px = gpgr_detection.camera_pos_px
-        cs.gpgr_width_px = gpgr_detection.width_px
+    # green and purple might have two detections
+    if HAT_GREEN in search_list:
+        green_detect_list = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=2, obj_name=HAT_GREEN)
 
-    # goalpost purple
-    if gppr_detection.in_frame:
-        cs.gppr_in_frame = True
-        cs.gppr_pos_px = gppr_detection.camera_pos_px
-        cs.gppr_width_px = gppr_detection.width_px
+        len_list = len(green_detect_list)
+        if len_list == 0:
+            pass
+        if len_list >= 1:
+            top_green_detect = green_detect_list[0]
+            if top_green_detect.in_frame:
+                cs.gp_green_up_in_frame = True
+                cs.gp_green_up_pos_px = top_green_detect.camera_pos_px
+                cs.gp_green_up_width_px = top_green_detect.width_px
+        
+        if len_list >= 2:
+            bot_green_detect = green_detect_list[1]
+            if bot_green_detect.in_frame:
+                cs.gp_green_dw_in_frame = True
+                cs.gp_green_dw_pos_px = bot_green_detect.camera_pos_px
+                cs.gp_green_dw_width_px = bot_green_detect.width_px
 
-    # their bot
-    if tbot_detection.in_frame:
-        cs.tbot_in_frame = True
-        cs.tbot_pos_px = tbot_detection.camera_pos_px
-        cs.tbot_width_px = tbot_detection.width_px
+    if HAT_FUCHSIA in search_list:
+        purpl_detect_list = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=2, obj_name=HAT_FUCHSIA)
+
+        len_list = len(purpl_detect_list)
+        if len_list == 0:
+            pass
+        if len_list >= 1:
+            top_purpl_detect = purpl_detect_list[0]
+            if top_purpl_detect.in_frame:
+                cs.gp_purpl_up_in_frame = True
+                cs.gp_purpl_up_pos_px = top_purpl_detect.camera_pos_px
+                cs.gp_purpl_up_width_px = top_purpl_detect.width_px
+        
+        if len_list >= 2:
+            bot_purpl_detect = purpl_detect_list[1]
+            if bot_purpl_detect.in_frame:
+                cs.gp_purpl_dw_in_frame = True
+                cs.gp_purpl_dw_pos_px = bot_purpl_detect.camera_pos_px
+                cs.gp_purpl_dw_width_px = bot_purpl_detect.width_px
+
+    cs = determine_goal_in_frame(cs, our_left_is_green)
 
     return cs
+
+
+def determine_goal_in_frame(cs : CameraState, our_left_is_green: bool) -> CameraState:
+    '''determine whos goal if any is in frame'''
+    # if there is a green and purple in frame
+    if (cs.gp_green_up_in_frame or cs.gp_green_dw_in_frame) and (cs.gp_purpl_up_in_frame or cs.gp_purpl_dw_in_frame):
+
+        # get the green goalpost
+        if cs.gp_green_up_in_frame:
+            green_goal_pos_px = cs.gp_green_up_pos_px
+        else:
+            green_goal_pos_px = cs.gp_green_dw_pos_px
+
+        # get the purple goalpost
+        if cs.gp_purpl_up_in_frame:
+            purpl_goal_pos_px = cs.gp_purpl_up_pos_px
+        else:
+            purpl_goal_pos_px = cs.gp_purpl_dw_pos_px
+ 
+        # if green is more left than purple
+        if green_goal_pos_px.x < purpl_goal_pos_px.x:
+            is_green_purple = True
+        else:
+            is_green_purple = False
+
+        if our_left_is_green:
+            if is_green_purple:
+                # opponent goal
+                cs.their_goal_in_frame = True
+                return cs
+            else:
+                # our goal
+                cs.our_goal_in_frame = True
+                return cs
+        else:
+            if is_green_purple:
+                # our goal
+                cs.our_goal_in_frame = True
+                return cs
+            else:
+                # opponent goal
+                cs.their_goal_in_frame = True
+                return cs
+    else:
+        # unable to determine goal, default is false so we're good
+        return cs
 
 
 def get_gantrystate(cs_left: CameraState, cs_right: CameraState) -> GantryState:
@@ -570,8 +660,4 @@ def get_gantrystate(cs_left: CameraState, cs_right: CameraState) -> GantryState:
 
         side_b = twoR * math.sin(beta)
         
-
-
-
-
     return gs
