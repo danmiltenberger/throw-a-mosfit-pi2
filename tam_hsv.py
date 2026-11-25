@@ -18,11 +18,11 @@ def main():
 
     file_path = "hsv_photos/all_in_one_right.png"
 
-    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= BALL_RED)
-    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_GREEN)
-    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_FUCHSIA)
-    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_YELLOW)
-    # update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_BLUE)
+    update_hsv(csv_name=csv_name, image_path= file_path, object_name= BALL_RED)
+    update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_GREEN)
+    update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_FUCHSIA)
+    update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_YELLOW)
+    update_hsv(csv_name=csv_name, image_path= file_path, object_name= HAT_BLUE)
 
     # show what the program will detect
 

@@ -15,6 +15,7 @@ def show_frames_and_wait_for_q():
         if show_frame_in_loop(overlapped) == False:
             save_frame_as_png(left_frame, "hsv_photos/all_in_one_left.png")
             save_frame_as_png(right_frame, "hsv_photos/all_in_one_right.png")
+            break
 
 
 if __name__ == "__main__":
