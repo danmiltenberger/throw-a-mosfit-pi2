@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 import math
 from tam_topdown import calc_range
+from tam_constants import BALL_RED, HAT_FUCHSIA, HAT_BLUE, HAT_GREEN
 
 camL, camR = setup_left_right_cams()
 search_dict = load_search_dict_from_csv()
@@ -18,6 +19,8 @@ print("left_x_px", "right_x_px", "dis_in", "bearing_deg", sep="\t")
 
 RUN_LIVE : bool = True
 
+
+search_list = [BALL_RED, HAT_FUCHSIA, HAT_GREEN, HAT_BLUE]
 
 def example_rangefinding():
     frame_left, frame_right = get_left_right_frames(camL,camR)
