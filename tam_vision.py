@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 import math
-from tam_classes import FieldState, Point, Detection, CameraState
+from tam_classes import FieldState, Point, Detection, CameraState, Settings, DualCameraState
 from tam_constants import (
     BALL_RED,
     HSV_HI,
@@ -30,24 +30,20 @@ from tam_topdown import (
     convert_to_field,
 )
 from tam_draw import (
-    add_text_top,
-    draw_robot_to_field,
     draw_ball_to_field,
     draw_top_down_arrows,
     draw_object_to_frame,
+    add_text_top,
+    draw_robot_to_field
 )
 from tam_frame import concat_frames
-from tam_decide import get_detection_dict
 from typing import Sequence
+from tam_triangulate import triangulate_object_wrt_bot
 
 
 def get_hsv_frame(frame: np.ndarray) -> np.ndarray:
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     return hsv
-
-
-import cv2
-import numpy as np
 
 
 def clean_mask(mask: np.ndarray, kernel_size: int = 5) -> np.ndarray:
@@ -254,9 +250,6 @@ def search_for_ball(
     return fieldstate
 
 
-
-
-
 def get_annotated_frame(frame: np.ndarray, search_dict: dict) -> np.ndarray:
 
     annotated_frame = frame.copy()
@@ -425,6 +418,44 @@ def example_vision_full_stack(
     return combined_frame
 
 
+def get_dual_camerastate(
+        frame_left : np.ndarray, 
+        frame_right: np.ndarray, 
+        search_dict: dict, 
+        match_set : Settings, 
+        search_list : list[str] = [BALL_RED, HAT_BLUE, HAT_YELLOW, HAT_FUCHSIA, HAT_GREEN]) -> DualCameraState:
+    '''get the left and right camerastates from the left and right frames. Defaults to looking for all objects but optionally search for less'''
+
+    our_left_is_green = match_set.left_is_green
+
+
+    cs_left = get_camerastate_filtered(
+        search_list= search_list,
+        search_dict= search_dict,
+        frame_camera= frame_left,
+        is_left= True,
+        our_left_is_green= our_left_is_green
+    )
+
+    cs_right = get_camerastate_filtered(
+        search_list= search_list,
+        search_dict= search_dict,
+        frame_camera= frame_right,
+        is_left= False,
+        our_left_is_green= our_left_is_green
+    )
+
+    dual_cam = DualCameraState()
+    dual_cam.left = cs_left
+    dual_cam.right = cs_right
+
+    return dual_cam
+
+
+
+
+
+
 def get_camerastate(
         frame_camera: np.ndarray, 
         search_dict:dict, 
@@ -444,8 +475,6 @@ def get_camerastate(
     )
 
     return cs
-
-
 
 
 def get_camerastate_filtered(
@@ -537,6 +566,9 @@ def get_camerastate_filtered(
     return cs
 
 
+
+
+
 def determine_goal_in_frame(cs : CameraState, our_left_is_green: bool) -> CameraState:
     '''determine whos goal if any is in frame'''
     # if there is a green and purple in frame
@@ -586,14 +618,48 @@ def determine_goal_in_frame(cs : CameraState, our_left_is_green: bool) -> Camera
 
 
 
-def get_fieldstate(cs_left: CameraState, cs_right: CameraState, prev_pos: Point, prev_rad : float) -> FieldState:
+
+def get_fieldstate(
+        cs_left: CameraState, 
+        cs_right: CameraState, 
+        prev_fs: FieldState,) -> FieldState:
     '''given two camera states, determine the state of the field by 
     first updating the bot's pose with respect to the fixed goalposts, then 
     updating the position of other objects with respect to the bot's pose'''
 
-    fs = FieldState()
+    def get_ball_pos_on_field(fs: FieldState) -> FieldState:
+
+        if cs_left.ball_in_frame and cs_right.ball_in_frame:
+            ball_dis, ball_rad = triangulate_object_wrt_bot(cs_left.ball_pos_px, cs_right.ball_pos_px)
+
+            fs.ball_pos_in = convert_to_field(
+                object_bearing_rad=ball_rad,
+                object_dis=ball_dis,
+                robot_bearing_rad=fs.our_bot_bearing_rad,
+                robot_pos=fs.our_bot_pos_in,
+            )
+        else:
+            fs.ball_pos_in = fs.ball_pos_in
+        return fs
 
 
+    def get_opponent_pos_on_field(fs: FieldState) -> FieldState:
+        if cs_left.tbot_in_frame and cs_right.tbot_in_frame:
+            opponent_dis, opponent_rad = triangulate_object_wrt_bot(cs_left.tbot_pos_px, cs_right.tbot_pos_px)
+            fs.their_bot_pos_in = convert_to_field(
+                object_bearing_rad=opponent_rad,
+                object_dis=opponent_dis,
+                robot_bearing_rad=fs.our_bot_bearing_rad,
+                robot_pos=fs.our_bot_pos_in,
+            )
+        else:
+            fs.their_bot_pos_in = prev_fs.their_bot_pos_in
+        return fs
 
+    
+
+    fs = prev_fs
+    fs = get_opponent_pos_on_field(fs)
+    fs = get_ball_pos_on_field(fs)
 
     return fs

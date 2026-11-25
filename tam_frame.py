@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from datetime import datetime
 from pathlib import Path
+from tam_classes import Settings
 
 
 def concat_frames(
@@ -67,43 +68,27 @@ def concat_frames(
     )
 
 
-def get_dashboard(
-        camera_frame: np.ndarray, 
-        field_frame: np.ndarray,
-        lcd_frame : np.ndarray | None = None, ) -> np.ndarray:
+def get_dashboard(cam_left: np.ndarray, cam_right: np.ndarray, field_frame: np.ndarray) -> np.ndarray:
+    blended = overlap_frames(cam_left, cam_right)
+    side_by_side = concat_frames(blended, field_frame)
+    return side_by_side
 
 
-    if lcd_frame is not None:
-        dashboard_frame = concat_frames(camera_frame, lcd_frame, "DOWN")
-    else:
-        dashboard_frame = camera_frame
-
-    dashboard_frame = concat_frames(dashboard_frame, field_frame, "RIGHT")
-
-    return dashboard_frame
-
-
-def get_field_frame(USE_DRAWN_FIELD : bool = True, left_is_green = False, bottom_is_blue = False,) -> np.ndarray:
+def get_field_frame(match_set : Settings, use_drawn_field: bool = True) -> np.ndarray:
     '''status quo is yellow on bottom and purple on left'''
 
-    if USE_DRAWN_FIELD:
+    if use_drawn_field:
         frame = load_image_as_frame("field_pngs/field_empty.png")
         style = "drawn"
     else:
         frame = load_image_as_frame("field_pngs/field_black.png")
         style = "black"
 
-
-    if bottom_is_blue:
-        # Mirror vertically (upside down)
+    if match_set.our_team_is_orange:
+        # green should be west and the bottom color should be orange
         frame = cv2.flip(frame, 0)
-
-
-    if left_is_green:
-        # Mirror horizontally (left goes to the right)
         frame = cv2.flip(frame, 1)
 
-   # print(f"loaded empty field frame {style}")
     return frame
 
 

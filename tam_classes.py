@@ -57,18 +57,41 @@ class Detection:
 
 @dataclass
 class Settings:
-    '''wrapper for the settings that affect how our match is run'''
+    '''wrapper for the settings that affect how our match is run and drawn'''
 
-    our_team_is_yellow : bool = True
-    west_goalpost_is_green : bool = True
+    our_team_is_orange : bool = False
+    left_is_green : bool = False
+    right_is_purple : bool = False
 
-    search_list = [
-        BALL_RED,
-        HAT_BLUE,
-        HAT_YELLOW,
-        HAT_FUCHSIA,
-        HAT_GREEN
-    ]
+    draw_arrow_to_ball: bool = True
+    draw_our_bot : bool = True
+    draw_ball : bool = True
+
+
+
+
+
+def get_settings(our_team_is_orange: bool) -> Settings:
+    # if our team is orange:
+    # left is green and right is purple
+
+    # if our team is yellow
+    # left is purple and right is green
+
+    set = Settings()
+
+    if our_team_is_orange:
+        set.our_team_is_orange = True
+        set.left_is_green = True
+        set.right_is_purple = True
+    else:
+        set.our_team_is_orange = False
+        set.left_is_green = False
+        set.right_is_purple = False
+
+    return set
+
+ 
 
 
 
@@ -113,6 +136,15 @@ class CameraState:
     gp_purpl_dw_width_px : float = 0
     gp_green_up_width_px : float = 0
     gp_green_dw_width_px : float = 0
+
+
+@dataclass
+class DualCameraState:
+    '''both camerastates packaged together'''
+
+    left : CameraState = field(default_factory=lambda: CameraState())
+    right : CameraState = field(default_factory=lambda: CameraState())
+
 
 
 

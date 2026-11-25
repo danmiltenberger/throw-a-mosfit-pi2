@@ -122,7 +122,7 @@ def convert_to_field(
     Field +y is up-field; +x is field-right.
     Robot bearing is measured counter-clockwise from the field's +x axis.
     """
-    field_bearing_rad = robot_bearing_rad - object_bearing_rad
+    field_bearing_rad = robot_bearing_rad - object_bearing_rad + np.pi/2
 
     object_pos = Point(
         x=robot_pos.x + object_dis * math.cos(field_bearing_rad),

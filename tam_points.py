@@ -1,5 +1,6 @@
 from tam_classes import Point, Line
 from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y
+from tam_goalpost import GOALPOST_NORTHEAST, GOALPOST_NORTHWEST, GOALPOST_SOUTHEAST, GOALPOST_SOUTHWEST
 
 
 # working with the camera
@@ -13,10 +14,7 @@ CAMERA_CENTER = Point(CAMERA_CENTER_X, CAMERA_CENTER_Y)
 ### Defining the field, everything in inches
 FIELD_CENTER = Point(48,72)
 
-GOALPOST_SOUTHWEST = Point(24,0)
-GOALPOST_SOUTHEAST = Point(72,0)
-GOALPOST_NORTHWEST = Point(24,144)
-GOALPOST_NORTHEAST = Point(72,144)
+
 
 FIELD_SOUTHWEST_CORNER = Point(0,0)
 FIELD_SOUTHEAST_CORNER = Point(96,0)

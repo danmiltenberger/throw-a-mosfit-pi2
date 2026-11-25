@@ -1,14 +1,29 @@
 import numpy as np
 import cv2
-from tam_classes import Point, get_point_int_tuple, Rectangle, FieldState, Detection, color_dict, CameraState
+from tam_classes import (
+    Point,
+    get_point_int_tuple,
+    Rectangle,
+    FieldState,
+    Detection,
+    CameraState,
+    Settings,
+    DualCameraState
+)
 import math
 from tam_colors import *
 from tam_constants import *
-from tam_topdown import calc_angle_from_screen_center, calc_distance_from_bot, convert_to_field
+from tam_topdown import (
+    calc_angle_from_screen_center,
+    calc_distance_from_bot,
+    convert_to_field,
+)
 from tam_points import CAMERA_CENTER_BOTTOM, CAMERA_CENTER, FIELD_GOALBOX_CENTER_BOTTOM
-
+from dataclasses import dataclass
+from tam_frame import overlap_frames
 
 PIXELS_PER_INCH = 5
+
 
 def convert_to_px(inches: float) -> int:
     """Convert inches to pixels using the global scale factor."""
@@ -36,7 +51,7 @@ total_window_in_x = 2 * total_buffer_in + playing_field_in_x
 total_window_px_x = int(total_window_in_x * PIXELS_PER_INCH)
 total_window_px_y = int(total_window_in_y * PIXELS_PER_INCH)
 
-field_center_px_x = int(total_window_px_x/ 2)
+field_center_px_x = int(total_window_px_x / 2)
 field_center_px_y = int(total_window_px_y / 2)
 
 
@@ -50,7 +65,7 @@ goalbox_center_bot_in = (0, -60)
 goal_net_px_x = convert_to_px(goal_net_in_x)
 goal_net_px_y = convert_to_px(goal_net_in_y)
 
-goalpost_left_offset = field_center_px_x - int(goal_net_px_x/2)
+goalpost_left_offset = field_center_px_x - int(goal_net_px_x / 2)
 goalpost_top_offset = goal_net_px_y
 
 goalbox_right_offset = total_window_px_x - goalpost_left_offset
@@ -138,10 +153,10 @@ def draw_top_down_arrows(
     corner_field_point = Point(ref_point_in.x, target_point_in.y)
     corner_px = inches_to_screen(corner_field_point)
 
-    red = (0, 0, 255)       # BGR
-    blue = (255, 0, 0)      # BGR
-    green = (0, 255, 0)     # BGR
-    white = (255, 255, 255) # BGR
+    red = (0, 0, 255)  # BGR
+    blue = (255, 0, 0)  # BGR
+    green = (0, 255, 0)  # BGR
+    white = (255, 255, 255)  # BGR
 
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.55
@@ -163,7 +178,7 @@ def draw_top_down_arrows(
     cv2.arrowedLine(
         img=field_frame,
         pt1=get_point_int_tuple(corner_px),
-        pt2 = get_point_int_tuple(target_px),
+        pt2=get_point_int_tuple(target_px),
         color=blue,
         thickness=line_thickness,
         line_type=cv2.LINE_AA,
@@ -260,12 +275,13 @@ def draw_top_down_arrows(
 
 
 def draw_arrow_point_to_point(
-        frame: np.ndarray, 
-        start: Point, 
-        end: Point, 
-        color: tuple[int,int,int]= BLACK, 
-        is_in_inches: bool = False,
-        label_lines : list[str] = [])-> np.ndarray:
+    frame: np.ndarray,
+    start: Point,
+    end: Point,
+    color: tuple[int, int, int] = BLACK,
+    is_in_inches: bool = False,
+    label_lines: list[str] = [],
+) -> np.ndarray:
 
     if is_in_inches:
         start = inches_to_screen(start)
@@ -283,34 +299,50 @@ def draw_arrow_point_to_point(
 
     if len(label_lines) != 0:
         midpoint = Point(
-            x = 0.5*(start.x + end.x),
-            y = 0.5*(start.y + end.y),
+            x=0.5 * (start.x + end.x),
+            y=0.5 * (start.y + end.y),
         )
         frame = add_text_left_of_point(
-            center_left= midpoint,
-            lines= label_lines,
-            frame= frame
+            center_left=midpoint, lines=label_lines, frame=frame
         )
 
     return frame
 
 
-def draw_line_point_to_point(frame: np.ndarray, start: Point, end: Point, color: tuple[int,int,int]= BLACK, thickness: int = 1, is_in_inches: bool = False) -> np.ndarray:
+def get_midpoint(pt1: Point, pt2: Point) -> Point:
+    pt_mid = Point(x=0.5 * (pt1.x + pt2.x), y=0.5 * (pt1.y + pt2.y))
+    return pt_mid
+
+
+def draw_line_point_to_point(
+    frame: np.ndarray,
+    start: Point,
+    end: Point,
+    color: tuple[int, int, int] = BLACK,
+    thickness: int = 1,
+    is_in_inches: bool = False,
+    label_lines: list[str] = [],
+) -> np.ndarray:
 
     if is_in_inches:
         start = inches_to_screen(start)
         end = inches_to_screen(end)
-    
+
     frame = cv2.line(
-        img= frame,
-        pt1= get_point_int_tuple(start),
-        pt2= get_point_int_tuple(end),
-        color= color,
-        thickness= thickness
+        img=frame,
+        pt1=get_point_int_tuple(start),
+        pt2=get_point_int_tuple(end),
+        color=color,
+        thickness=thickness,
     )
 
-    return frame
+    if len(label_lines) > 0:
+        midpoint = get_midpoint(start, end)
+        frame = add_text_left_of_point(
+            frame=frame, lines=label_lines, center_left=midpoint
+        )
 
+    return frame
 
 
 def draw_notched_rectangle(
@@ -358,8 +390,13 @@ def draw_notched_rectangle(
         The modified input image.
     """
     values = (
-        center_x, top_y, width, height,
-        base_length, angle_deg, rotation_deg,
+        center_x,
+        top_y,
+        width,
+        height,
+        base_length,
+        angle_deg,
+        rotation_deg,
     )
     if not all(np.isfinite(v) for v in values):
         raise ValueError("All geometry parameters must be finite.")
@@ -369,17 +406,12 @@ def draw_notched_rectangle(
         raise ValueError("base_length must be between 0 and width.")
     if not 0 < angle_deg < 180:
         raise ValueError("angle_deg must be between 0 and 180.")
-    if (
-        not isinstance(border_thickness, (int, np.integer))
-        or border_thickness < 1
-    ):
+    if not isinstance(border_thickness, (int, np.integer)) or border_thickness < 1:
         raise ValueError("border_thickness must be a positive integer.")
     if not np.isfinite(opacity) or not 0 <= opacity <= 1:
         raise ValueError("opacity must be a finite number between 0 and 1.")
 
-    notch_depth = (base_length / 2) / np.tan(
-        np.deg2rad(angle_deg / 2)
-    )
+    notch_depth = (base_length / 2) / np.tan(np.deg2rad(angle_deg / 2))
     if notch_depth >= height:
         raise ValueError("The notch must be shallower than the rectangle.")
 
@@ -390,27 +422,26 @@ def draw_notched_rectangle(
     right = center_x + width / 2
     bottom = top_y + height
 
-    vertices = np.array([
-        [left,                       top_y],
-        [center_x - base_length / 2,  top_y],
-        [center_x,                   top_y + notch_depth],
-        [center_x + base_length / 2,  top_y],
-        [right,                      top_y],
-        [right,                      bottom],
-        [left,                       bottom],
-    ], dtype=np.float64)
+    vertices = np.array(
+        [
+            [left, top_y],
+            [center_x - base_length / 2, top_y],
+            [center_x, top_y + notch_depth],
+            [center_x + base_length / 2, top_y],
+            [right, top_y],
+            [right, bottom],
+            [left, bottom],
+        ],
+        dtype=np.float64,
+    )
 
     pivot = (float(center_x), float(top_y + height / 2))
-    matrix = cv2.getRotationMatrix2D(
-        pivot, float(rotation_deg), 1.0
-    )
+    matrix = cv2.getRotationMatrix2D(pivot, float(rotation_deg), 1.0)
     rotated_vertices = vertices @ matrix[:, :2].T + matrix[:, 2]
 
     # Retain subpixel geometry until rasterization.
     shift = 8
-    points = np.rint(
-        rotated_vertices * (1 << shift)
-    ).astype(np.int32)
+    points = np.rint(rotated_vertices * (1 << shift)).astype(np.int32)
 
     # Draw directly when opaque; otherwise draw onto a copy.
     overlay = image if opacity == 1 else image.copy()
@@ -448,8 +479,36 @@ def draw_notched_rectangle(
     return image
 
 
-def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point= FIELD_GOALBOX_CENTER_BOTTOM, bearing_rad: float = BEARING_NORTH, color: tuple[int,int,int]= YELLOW) -> np.ndarray:
-    '''draw a robot (notched rectangle) to the field'''
+def get_camera_points(bot_pos_in : Point, bot_bearing_rad: float) -> tuple[Point,Point]:
+    '''return the left and right points on the field which equate to the left and right cameras
+    the cameras are 2.5 in left and right from the bot center 
+    '''
+
+    dis_from_center = 2.5
+    left_rad = bot_bearing_rad + np.pi/2       # 90 degrees to the left of the bot's bearing
+    right_rad = bot_bearing_rad -  np.pi/2   
+
+    left_cam_x = bot_pos_in.x + math.cos(left_rad) * dis_from_center   
+    left_cam_y = bot_pos_in.y + math.sin(left_rad) * dis_from_center   
+
+    left_point = Point(left_cam_x, left_cam_y)
+
+    right_cam_x = bot_pos_in.x + math.cos(right_rad) * dis_from_center   
+    right_cam_y = bot_pos_in.y + math.sin(right_rad) * dis_from_center  
+
+    right_point = Point(right_cam_x, right_cam_y)
+
+    return left_point, right_point 
+
+
+def draw_robot_to_field(
+    field_frame: np.ndarray,
+    pos_in: Point = FIELD_GOALBOX_CENTER_BOTTOM,
+    bearing_rad: float = BEARING_NORTH,
+    color: tuple[int, int, int] = YELLOW,
+    draw_camera_points : bool = True
+) -> np.ndarray:
+    """draw a robot (notched rectangle) to the field"""
 
     pos_px = inches_to_screen(pos_in)
 
@@ -462,23 +521,27 @@ def draw_robot_to_field(field_frame: np.ndarray, pos_in: Point= FIELD_GOALBOX_CE
         base_length=convert_to_px(BALL_RED_RADIUS_IN) * 2,
         angle_deg=90,
         color=color,
-        rotation_deg=math.degrees(bearing_rad) -90,
+        rotation_deg=math.degrees(bearing_rad) - 90,
         border_thickness=1,
     )
 
     return field_frame
 
 
-def draw_ball_to_field(field_frame: np.ndarray, ball_pos_in: Point, outline_color : tuple[int,int,int] = BLACK) -> np.ndarray:
+def draw_ball_to_field(
+    field_frame: np.ndarray,
+    ball_pos_in: Point,
+    outline_color: tuple[int, int, int] = BLACK,
+) -> np.ndarray:
     ball_pos_px = inches_to_screen(ball_pos_in)
     field_frame = draw_outlined_circle(
-            center= ball_pos_px,
-            outline_color= outline_color,
-            fill_color= RED,
-            image= field_frame,
-            outline_thickness= 2,
-            radius= convert_to_px(BALL_RED_RADIUS_IN)
-        )
+        center=ball_pos_px,
+        outline_color=outline_color,
+        fill_color=RED,
+        image=field_frame,
+        outline_thickness=2,
+        radius=convert_to_px(BALL_RED_RADIUS_IN),
+    )
 
     return field_frame
 
@@ -543,12 +606,20 @@ def draw_outlined_circle(
     center_xy = (int(center.x), int(center.y))
 
     cv2.circle(
-        image, center_xy, radius, fill_color,
-        thickness=-1, lineType=cv2.LINE_AA,
+        image,
+        center_xy,
+        radius,
+        fill_color,
+        thickness=-1,
+        lineType=cv2.LINE_AA,
     )
     cv2.circle(
-        image, center_xy, radius, outline_color,
-        thickness=outline_thickness, lineType=cv2.LINE_AA,
+        image,
+        center_xy,
+        radius,
+        outline_color,
+        thickness=outline_thickness,
+        lineType=cv2.LINE_AA,
     )
 
     return image
@@ -576,7 +647,6 @@ def draw_transparent_circle(
         raise ValueError("alpha must be between 0.0 and 1.0.")
     if radius < 0:
         raise ValueError("radius must be non-negative.")
-
 
     center = get_point_int_tuple(circle_center)
 
@@ -729,8 +799,6 @@ def draw_empty_field(
         height=playing_field_px_y,
     )
 
-
-
     goal_net = Rectangle(width=goal_net_px_x, height=goal_net_px_y)
 
     goalbox_px_x = convert_to_px(goalbox_in_x)
@@ -759,6 +827,7 @@ def draw_empty_field(
     )
 
     # draw the goal nets
+    # south goal
     goal_net_px_y_half = goal_net_px_y / 2
     goal_net_offset = int(total_window_px_y / 2 - goal_net_px_y_half)
     draw_vert_centered_rectangle(
@@ -768,11 +837,12 @@ def draw_empty_field(
         YELLOW,
     )
 
+    # north goal
     draw_vert_centered_rectangle(
         frame,
         goal_net,
         -goal_net_offset,
-        CYAN,
+        ORANGE,
     )
 
     # draw the goal boxes
@@ -791,44 +861,42 @@ def draw_empty_field(
         LIGHT_GRAY,
     )
 
-
     # draw the goalpost hats
     # left top
     frame = cv2.circle(
-        img= frame,
-        center= get_point_int_tuple(GOALPOST_LEFT_TOP),
-        color= FUCHSIA,
-        radius= convert_to_px(GOALPOST_RADIUS_IN),
-        thickness= -1,
+        img=frame,
+        center=get_point_int_tuple(GOALPOST_LEFT_TOP),
+        color=FUCHSIA,
+        radius=convert_to_px(GOALPOST_RADIUS_IN),
+        thickness=-1,
     )
 
     # left bottom
     frame = cv2.circle(
-        img= frame,
-        center= get_point_int_tuple(GOALPOST_LEFT_BOTTOM),
-        color= FUCHSIA,
-        radius= convert_to_px(GOALPOST_RADIUS_IN),
-        thickness= -1,
+        img=frame,
+        center=get_point_int_tuple(GOALPOST_LEFT_BOTTOM),
+        color=FUCHSIA,
+        radius=convert_to_px(GOALPOST_RADIUS_IN),
+        thickness=-1,
     )
 
     # right top
     frame = cv2.circle(
-        img= frame,
-        center= get_point_int_tuple(GOALPOST_RIGHT_TOP),
-        color= GREEN,
-        radius= convert_to_px(GOALPOST_RADIUS_IN),
-        thickness= -1,
+        img=frame,
+        center=get_point_int_tuple(GOALPOST_RIGHT_TOP),
+        color=GREEN,
+        radius=convert_to_px(GOALPOST_RADIUS_IN),
+        thickness=-1,
     )
 
     # right bottom
     frame = cv2.circle(
-        img= frame,
-        center= get_point_int_tuple(GOALPOST_RIGHT_BOTTOM),
-        color= GREEN,
-        radius= convert_to_px(GOALPOST_RADIUS_IN),
-        thickness= -1,
+        img=frame,
+        center=get_point_int_tuple(GOALPOST_RIGHT_BOTTOM),
+        color=GREEN,
+        radius=convert_to_px(GOALPOST_RADIUS_IN),
+        thickness=-1,
     )
-
 
     if draw_centerpoints:
         centerpoint = Rectangle(
@@ -858,7 +926,7 @@ def draw_empty_field(
         cv2.destroyAllWindows()
 
     if save_image:
-        cv2.imwrite("field_empty.png", frame)
+        cv2.imwrite("field_pngs/field_empty.png", frame)
 
     return frame
 
@@ -928,8 +996,8 @@ def add_text_top(
 
 
 def add_text_left_of_point(
-    frame : np.ndarray,
-    lines : list[str],
+    frame: np.ndarray,
+    lines: list[str],
     center_left: Point,
     left_offset: int = 0,
     font=cv2.FONT_HERSHEY_SIMPLEX,
@@ -955,9 +1023,7 @@ def add_text_left_of_point(
     # Measure each line
     text_sizes = []
     for text in lines:
-        (w, h), baseline = cv2.getTextSize(
-            text, font, font_scale, thickness
-        )
+        (w, h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
         text_sizes.append((w, h, baseline))
 
     line_heights = [h + baseline for _, h, baseline in text_sizes]
@@ -1004,9 +1070,7 @@ def draw_object_to_frame(
         np.ndarray: The frame with the object drawn.
     """
     if not isinstance(frame, np.ndarray):
-        raise TypeError(
-            f"frame must be numpy.ndarray, got {type(frame).__name__}"
-        )
+        raise TypeError(f"frame must be numpy.ndarray, got {type(frame).__name__}")
 
     if frame.ndim != 3 or frame.shape[2] != 3:
         raise ValueError(
@@ -1014,16 +1078,19 @@ def draw_object_to_frame(
         )
 
     if not isinstance(object_dict, dict):
-        raise TypeError(
-            f"object_dict must be dict, got {type(object_dict).__name__}"
-        )
+        raise TypeError(f"object_dict must be dict, got {type(object_dict).__name__}")
 
-    required_keys = {"WIDTH_PX", "AREA_PX", "CENTER_X_PX", "CENTER_Y_PX", "SHAPE", OBJECT_NAME}
+    required_keys = {
+        "WIDTH_PX",
+        "AREA_PX",
+        "CENTER_X_PX",
+        "CENTER_Y_PX",
+        "SHAPE",
+        OBJECT_NAME,
+    }
     missing_keys = required_keys - object_dict.keys()
     if missing_keys:
-        raise KeyError(
-            f"object_dict is missing required keys: {sorted(missing_keys)}"
-        )
+        raise KeyError(f"object_dict is missing required keys: {sorted(missing_keys)}")
 
     shape = str(object_dict["SHAPE"]).lower()
     if shape not in ("circle", "square", "no_shape"):
@@ -1081,54 +1148,56 @@ def draw_object_to_frame(
     elif shape == "no_shape":
         pass
 
-
     return frame
 
 
-def draw_circle_to_frame(frame: np.ndarray, center: Point, radius: int, color: tuple[int,int,int]=WHITE) -> np.ndarray:
+def draw_circle_to_frame(
+    frame: np.ndarray, center: Point, radius: int, color: tuple[int, int, int] = WHITE
+) -> np.ndarray:
 
     centerpoint = (int(center.x), int(center.y))
 
     frame = cv2.circle(
-        img= frame,
-        radius= radius,
-        center= centerpoint,
-        color= color,
-        thickness= PIXELS_PER_INCH
+        img=frame,
+        radius=radius,
+        center=centerpoint,
+        color=color,
+        thickness=PIXELS_PER_INCH,
     )
 
     return frame
 
-
-
-
-
     if detection.name == BALL_RED:
         field_frame = draw_ball_to_field(
-            field_frame= field_frame,
-            ball_pos_in= detection_pos_in
+            field_frame=field_frame, ball_pos_in=detection_pos_in
         )
 
     elif (detection.name == HAT_BLUE) or (detection.name == HAT_YELLOW):
         field_frame = draw_robot_to_field(
-            field_frame=field_frame,
-            pos_in= detection_pos_in
+            field_frame=field_frame, pos_in=detection_pos_in
         )
-
 
     if draw_arrow:
         detection_draw_color = get_draw_color(detection)
-        field_frame = draw_arrow_point_to_point(field_frame, robot_pos, detection_pos_in, is_in_inches= True, color=detection_draw_color)
+        field_frame = draw_arrow_point_to_point(
+            field_frame,
+            robot_pos,
+            detection_pos_in,
+            is_in_inches=True,
+            color=detection_draw_color,
+        )
 
     if draw_lines:
         detect_lines = get_detection_lines(detection)
-        field_frame = add_text_left_of_point(field_frame, detect_lines, detection_pos_in, is_in_inches=True, color= WHITE)
+        field_frame = add_text_left_of_point(
+            field_frame, detect_lines, detection_pos_in, is_in_inches=True, color=WHITE
+        )
 
     return field_frame
 
 
-def get_draw_color(detection : Detection) -> tuple[int,int,int]:
-    '''search the detection name and return the color it should be drawn'''
+def get_draw_color(detection: Detection) -> tuple[int, int, int]:
+    """search the detection name and return the color it should be drawn"""
 
     if detection.name == BALL_RED:
         return RED
@@ -1145,55 +1214,52 @@ def get_draw_color(detection : Detection) -> tuple[int,int,int]:
 
 
 def clamp_to_field(given_point_in: Point, label: str = "") -> Point:
-    '''ensure that the point is on the field'''
+    """ensure that the point is on the field"""
 
     if given_point_in.x < 0:
-        #print(f"{label} clamped left")
+        # print(f"{label} clamped left")
         given_point_in.x = 0
 
     if given_point_in.x > playing_field_in_x:
-        #print(f"{label} clamped right")
+        # print(f"{label} clamped right")
         given_point_in.x = playing_field_in_x
 
     if given_point_in.y < 0:
-        #print(f"{label} clamped bottom")
+        # print(f"{label} clamped bottom")
         given_point_in.y = 0
 
     if given_point_in.y > playing_field_in_y:
-        #print(f"{label} clamped top")
+        # print(f"{label} clamped top")
         given_point_in.y = playing_field_in_y
 
     return given_point_in
 
 
-def draw_vertical_line_on_camera_frame(frame: np.ndarray, dis_from_left: int = 0, label = "") -> np.ndarray:
-    '''draw a vertical line on the camera frame at a specified distance in pixels from the left'''
+def draw_vertical_line_on_camera_frame(
+    frame: np.ndarray, dis_from_left: int = 0, label=""
+) -> np.ndarray:
+    """draw a vertical line on the camera frame at a specified distance in pixels from the left"""
 
     point_top = Point(dis_from_left, 0)
     point_bottom = Point(dis_from_left, CAMERA_CAPTURE_Y)
 
-    label_position = Point(
-        x=point_top.x,
-        y= point_top.y)
+    label_position = Point(x=point_top.x, y=point_top.y)
     label_position.y += 10
 
     if label != "":
-        frame = add_text_left_of_point(frame, [label], center_left= label_position)
+        frame = add_text_left_of_point(frame, [label], center_left=label_position)
 
-    frame = draw_line_point_to_point(frame, point_top, point_bottom, color= WHITE)
-
-
+    frame = draw_line_point_to_point(frame, point_top, point_bottom, color=WHITE)
 
     return frame
 
 
 def draw_angle_lines_on_camera_frame(
-        frame: np.ndarray, 
-        add_text: bool = False,
-        list_of_angles_deg: list[float] = [-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0],) -> np.ndarray:
-    '''draw vertical lines for each deg listed and return the frame'''
-
-    
+    frame: np.ndarray,
+    add_text: bool = False,
+    list_of_angles_deg: list[float] = [-30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0],
+) -> np.ndarray:
+    """draw vertical lines for each deg listed and return the frame"""
 
     adjacent_side = SCREEN_CENTER_X / math.tan(math.radians(31.1))
 
@@ -1207,17 +1273,15 @@ def draw_angle_lines_on_camera_frame(
         if add_text == False:
             label = ""
         else:
-            label =  f"{angle_deg}deg"
+            label = f"{angle_deg}deg"
 
         frame = draw_vertical_line_on_camera_frame(frame, dis_from_left, label=label)
 
     return frame
 
 
-
-
 def get_lcd_frame(list_lines: list[str]) -> np.ndarray:
-    '''Create a frame that simulates a 4x20 character LCD screen.'''
+    """Create a frame that simulates a 4x20 character LCD screen."""
     rows, cols = 4, 20
 
     # Keep only the first four lines and truncate each line to 20 chars.
@@ -1229,10 +1293,10 @@ def get_lcd_frame(list_lines: list[str]) -> np.ndarray:
 
     # LCD-like colors in BGR.
     # BGR colors: blue background, white active text pixels.
-    background = (255, 0, 0)      # blue LCD background
-    #pixel_off = (255, 80, 80)     # faint unlit pixel, slightly lighter blue
+    background = (255, 0, 0)  # blue LCD background
+    # pixel_off = (255, 80, 80)     # faint unlit pixel, slightly lighter blue
     pixel_off = background
-    pixel_on = (255, 255, 255)    # white active text pixel
+    pixel_on = (255, 255, 255)  # white active text pixel
 
     scale = 6
     char_w, char_h = 5, 7
@@ -1311,7 +1375,7 @@ def get_lcd_frame(list_lines: list[str]) -> np.ndarray:
                 color = pixel_on if bit == "1" else pixel_off
                 x = x0 + col * scale
                 y = y0 + row * scale
-                frame[y:y + scale, x:x + scale] = color
+                frame[y : y + scale, x : x + scale] = color
 
     for line_index, text in enumerate(lines):
         for char_index, ch in enumerate(text):
@@ -1322,104 +1386,104 @@ def get_lcd_frame(list_lines: list[str]) -> np.ndarray:
     return frame
 
 
-
-
-
-def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is_yellow: bool = True, our_left_is_green: bool = True) -> np.ndarray:
-    '''from the CameraState, draw information to the frame'''
+def draw_camerastate_to_cam(
+    frame_cam: np.ndarray,
+    cs: CameraState,
+    settings: Settings,
+) -> np.ndarray:
+    """from the CameraState, draw information to the frame"""
 
     if cs.ball_in_frame:
         frame_cam = draw_circle_to_frame(
-            center= cs.ball_pos_px,
-            color= RED,
-            frame= frame_cam,
-            radius= int(cs.ball_width_px / 2)
+            center=cs.ball_pos_px,
+            color=RED,
+            frame=frame_cam,
+            radius=int(cs.ball_width_px / 2),
         )
 
         rad = calc_angle_from_screen_center(cs.ball_pos_px)
         frame_cam = add_text_left_of_point(
-            frame_cam, 
-            [str(round(math.degrees(rad),1)) + "deg"],
-            center_left= cs.ball_pos_px
+            frame_cam,
+            [str(round(math.degrees(rad), 1)) + "deg"],
+            center_left=cs.ball_pos_px,
         )
 
     # green down
     if cs.gp_green_dw_in_frame:
         frame_cam = draw_circle_to_frame(
-            frame= frame_cam,
-            center= cs.gp_green_dw_pos_px,
-            radius= int(cs.gp_green_dw_width_px/2),
-            color= GREEN
+            frame=frame_cam,
+            center=cs.gp_green_dw_pos_px,
+            radius=int(cs.gp_green_dw_width_px / 2),
+            color=GREEN,
         )
 
         rad = calc_angle_from_screen_center(cs.gp_green_dw_pos_px)
 
         frame_cam = add_text_left_of_point(
-            frame_cam, 
-            [str(round(math.degrees(rad),1)) + "deg"],
-            center_left= cs.gp_green_dw_pos_px
+            frame_cam,
+            [str(round(math.degrees(rad), 1)) + "deg"],
+            center_left=cs.gp_green_dw_pos_px,
         )
 
     # green up
     if cs.gp_green_up_in_frame:
         frame_cam = draw_circle_to_frame(
-            frame= frame_cam,
-            center= cs.gp_green_up_pos_px,
-            radius= int(cs.gp_green_up_width_px/2),
-            color= GREEN
+            frame=frame_cam,
+            center=cs.gp_green_up_pos_px,
+            radius=int(cs.gp_green_up_width_px / 2),
+            color=GREEN,
         )
 
         rad = calc_angle_from_screen_center(cs.gp_green_up_pos_px)
 
         frame_cam = add_text_left_of_point(
-            frame_cam, 
-            [str(round(math.degrees(rad),1)) + "deg"],
-            center_left= cs.gp_green_up_pos_px
+            frame_cam,
+            [str(round(math.degrees(rad), 1)) + "deg"],
+            center_left=cs.gp_green_up_pos_px,
         )
 
     # purple down
     if cs.gp_purpl_dw_in_frame:
         frame_cam = draw_circle_to_frame(
-            frame= frame_cam,
-            center= cs.gp_purpl_dw_pos_px,
-            radius= int(cs.gp_purpl_dw_width_px/2),
-            color= FUCHSIA
+            frame=frame_cam,
+            center=cs.gp_purpl_dw_pos_px,
+            radius=int(cs.gp_purpl_dw_width_px / 2),
+            color=FUCHSIA,
         )
 
         rad = calc_angle_from_screen_center(cs.gp_purpl_dw_pos_px)
 
         frame_cam = add_text_left_of_point(
-            frame_cam, 
-            [str(round(math.degrees(rad),1)) + "deg"],
-            center_left= cs.gp_purpl_dw_pos_px
+            frame_cam,
+            [str(round(math.degrees(rad), 1)) + "deg"],
+            center_left=cs.gp_purpl_dw_pos_px,
         )
 
     # purple up
     if cs.gp_purpl_up_in_frame:
         frame_cam = draw_circle_to_frame(
-            frame= frame_cam,
-            center= cs.gp_purpl_up_pos_px,
-            radius= int(cs.gp_purpl_up_width_px/2),
-            color= FUCHSIA
+            frame=frame_cam,
+            center=cs.gp_purpl_up_pos_px,
+            radius=int(cs.gp_purpl_up_width_px / 2),
+            color=FUCHSIA,
         )
 
         rad = calc_angle_from_screen_center(cs.gp_purpl_up_pos_px)
 
         frame_cam = add_text_left_of_point(
-            frame_cam, 
-            [str(round(math.degrees(rad),1)) + "deg"],
-            center_left= cs.gp_purpl_up_pos_px
+            frame_cam,
+            [str(round(math.degrees(rad), 1)) + "deg"],
+            center_left=cs.gp_purpl_up_pos_px,
         )
 
-
-    opponent_color = BLUE if our_team_is_yellow else YELLOW
+    opponent_color = YELLOW if settings.our_team_is_orange else YELLOW
 
     if cs.tbot_in_frame:
         frame_cam = draw_circle_to_frame(
             frame=frame_cam,
-            center= cs.tbot_pos_px,
-            radius= int(cs.tbot_width_px/2),
-            color= opponent_color
+            center=cs.tbot_pos_px,
+            radius=int(cs.tbot_width_px / 2),
+            color=opponent_color,
         )
 
     # draw a line from goalpost to goalpost if possible
@@ -1428,8 +1492,8 @@ def draw_camerastate_to_cam(frame_cam : np.ndarray, cs: CameraState, our_team_is
     return frame_cam
 
 
-def draw_goalpost_lines(cs : CameraState, frame : np.ndarray) -> np.ndarray:
-    '''draw lines showing the outline of the goal and if it is ours or our opponents'''
+def draw_goalpost_lines(cs: CameraState, frame: np.ndarray) -> np.ndarray:
+    """draw lines showing the outline of the goal and if it is ours or our opponents"""
 
     thickness = 2
 
@@ -1443,46 +1507,44 @@ def draw_goalpost_lines(cs : CameraState, frame : np.ndarray) -> np.ndarray:
     # top line
     if cs.gp_purpl_up_in_frame and cs.gp_green_up_in_frame:
         frame = draw_line_point_to_point(
-            color= goal_outline,
-            start= cs.gp_purpl_up_pos_px,
-            end= cs.gp_green_up_pos_px,
-            frame= frame,
-            thickness=thickness
+            color=goal_outline,
+            start=cs.gp_purpl_up_pos_px,
+            end=cs.gp_green_up_pos_px,
+            frame=frame,
+            thickness=thickness,
         )
 
     # bottom line
     if cs.gp_purpl_dw_in_frame and cs.gp_green_dw_in_frame:
         frame = draw_line_point_to_point(
-            color= goal_outline,
-            start= cs.gp_purpl_dw_pos_px,
-            end= cs.gp_green_dw_pos_px,
-            frame= frame,
-            thickness=thickness
+            color=goal_outline,
+            start=cs.gp_purpl_dw_pos_px,
+            end=cs.gp_green_dw_pos_px,
+            frame=frame,
+            thickness=thickness,
         )
 
     # green side
     if cs.gp_green_dw_in_frame and cs.gp_green_up_in_frame:
         frame = draw_line_point_to_point(
-            color= goal_outline,
-            start= cs.gp_green_dw_pos_px,
-            end= cs.gp_green_up_pos_px,
-            frame= frame,
-            thickness=thickness
+            color=goal_outline,
+            start=cs.gp_green_dw_pos_px,
+            end=cs.gp_green_up_pos_px,
+            frame=frame,
+            thickness=thickness,
         )
 
     # purple side
     if cs.gp_purpl_dw_in_frame and cs.gp_purpl_up_in_frame:
         frame = draw_line_point_to_point(
-            color= goal_outline,
-            start= cs.gp_purpl_dw_pos_px,
-            end= cs.gp_purpl_up_pos_px,
-            frame= frame,
-            thickness=thickness
+            color=goal_outline,
+            start=cs.gp_purpl_dw_pos_px,
+            end=cs.gp_purpl_up_pos_px,
+            frame=frame,
+            thickness=thickness,
         )
 
-
     return frame
-
 
 
 def format_lcd_line(left, right, width=20):
@@ -1499,3 +1561,63 @@ def format_lcd_line(left, right, width=20):
 
     padding = width - len(left) - len(right)
     return left + " " * padding + right
+
+
+def draw_dualcamerastate_to_cam(dual: DualCameraState, settings: Settings, left_frame: np.ndarray, right_frame: np.ndarray | None = None) -> np.ndarray:
+    '''draw both camerastates to one or both cameras'''
+
+    # blend frames together (what the team called 'drunk mode' or just show on the left)
+    if right_frame is None:
+        combined_frame = left_frame
+
+        combined_frame = draw_camerastate_to_cam(cs=dual.left, frame_cam= combined_frame, settings= settings)
+        combined_frame = draw_camerastate_to_cam(cs=dual.right, frame_cam= combined_frame, settings= settings)
+
+    else:
+
+        left_frame = draw_camerastate_to_cam(cs=dual.left, frame_cam= left_frame, settings= settings)
+        right_frame = draw_camerastate_to_cam(cs=dual.right, frame_cam= right_frame, settings= settings)
+        combined_frame = overlap_frames(left_frame, right_frame)
+    
+
+
+    return combined_frame
+
+
+
+def draw_fieldstate(
+    field_frame: np.ndarray, fs: FieldState, draw_settings: Settings
+) -> np.ndarray:
+    """draw the fieldstate to the field frame"""
+
+    # if no draw settings given, load the default
+    if draw_settings is None:
+        draw_settings = DrawSettings()
+
+    # draw the ball
+    if draw_settings.draw_ball:
+        field_frame = draw_ball_to_field(field_frame, fs.ball_pos_in)
+
+        if draw_settings.draw_arrow_to_ball:
+            field_frame = draw_line_point_to_point(
+                field_frame, fs.our_bot_pos_in, fs.ball_pos_in, is_in_inches=True
+            )
+
+    # draw our bot
+    if draw_settings.our_team_is_orange:
+        our_bot_color = ORANGE
+        their_bot_color = YELLOW
+    else:
+        our_bot_color = YELLOW
+        their_bot_color = ORANGE
+
+
+    if draw_settings.draw_our_bot:
+        field_frame = draw_robot_to_field(
+            field_frame=field_frame,
+            bearing_rad=fs.our_bot_bearing_rad,
+            pos_in=fs.our_bot_pos_in,
+            color= our_bot_color
+        )
+
+    return field_frame

@@ -1,9 +1,9 @@
 import numpy as np
 import math
-from tam_classes import Point
+from tam_classes import Point, CameraState, Settings
 from tam_topdown import calc_angle_from_screen_center, convert_angle_from_screen_center_to_ccw_east
 from dataclasses import field, dataclass
-
+from tam_points import GOALPOST_NORTHEAST, GOALPOST_NORTHWEST, GOALPOST_SOUTHEAST, GOALPOST_SOUTHWEST, FIELD_GOALBOX_CENTER_BOTTOM
 
 @dataclass
 class Triangle:
@@ -24,8 +24,8 @@ class Bearing:
     rad : float = 0
 
 
-def triangulate_object_wrt_bot(pos_px_left : Point, pos_px_right : Point) -> Point:
-    '''return the x and y position of an object with respect to the bot'''
+def triangulate_object_wrt_bot(pos_px_left : Point, pos_px_right : Point) -> tuple[float,float]:
+    '''return the distance in inches and angle in radians (+ccw east) of an object wrt the bot'''
 
     # distance between cameras
     side_c = 5
@@ -54,21 +54,90 @@ def triangulate_object_wrt_bot(pos_px_left : Point, pos_px_right : Point) -> Poi
     object_x_wrtG = -half_side_c + object_x_wrtA
     object_y_wrtG = object_y_wrtA
 
-    p = Point(object_x_wrtG, object_y_wrtG)
 
     dis = math.hypot(object_x_wrtG, object_y_wrtG)
-    # print(round(dis), "in")
+    rad = math.atan(object_y_wrtG / object_x_wrtG)
 
-    return p
-
-
+    return dis, rad
 
 
+# keys
+GREEN_UP = "GREEN_UP"
+GREEN_DW = "GREEN_DW"
+PURPL_UP = "PURPL_UP"
+PURPL_DW = "PURPL_DW"
+
+KNOWN_POINT = "KNOWN_POINT"
+DIS_IN = "DIS_IN"
+RAD = "RAD"
 
 
-def triangulate_pos_and_rad_from_goalposts(cs_left, cs_right, prev_pos, prev_rad) -> tuple[Point, float]:
-    '''try to determine the robot's position with respect to the fixed goalposts'''
+
+def get_goalpost_dict(cs_left : CameraState, cs_right: CameraState, is_facing_north : bool, west_is_green : bool = True) -> dict:
+    '''go through the 4 possible goalposts and return their distance from bot, angle from bot's east +ccw, and known point on the field'''
 
 
-    # if unable to triangulate, return the previous values
-    return prev_pos, prev_rad
+
+    goalposts_dict = {
+        GREEN_UP : {},
+        GREEN_DW : {},
+        PURPL_UP : {},
+        PURPL_DW : {},
+    }
+
+    if is_facing_north:
+        west_goalpost = GOALPOST_NORTHWEST
+        east_goalpost = GOALPOST_NORTHEAST
+    else:
+        west_goalpost = GOALPOST_SOUTHWEST
+        east_goalpost = GOALPOST_SOUTHEAST
+
+    if west_is_green:
+        goalposts_dict[GREEN_UP][KNOWN_POINT] = west_goalpost
+        goalposts_dict[GREEN_DW][KNOWN_POINT] = west_goalpost
+        goalposts_dict[PURPL_UP][KNOWN_POINT] = east_goalpost
+        goalposts_dict[PURPL_DW][KNOWN_POINT] = east_goalpost
+    else:
+        goalposts_dict[GREEN_UP][KNOWN_POINT] = east_goalpost
+        goalposts_dict[GREEN_DW][KNOWN_POINT] = east_goalpost
+        goalposts_dict[PURPL_UP][KNOWN_POINT] = west_goalpost
+        goalposts_dict[PURPL_DW][KNOWN_POINT] = west_goalpost
+
+    # green top
+    if cs_left.gp_green_up_in_frame and cs_right.gp_green_up_in_frame:
+        goalpost_left = cs_left.gp_green_up_pos_px
+        goalpost_right = cs_right.gp_green_up_pos_px
+        dis, ang = triangulate_object_wrt_bot(goalpost_left, goalpost_right)
+        goalposts_dict[GREEN_UP][DIS_IN] = dis
+        goalposts_dict[GREEN_UP][RAD] = ang
+
+    # green bottom
+    if cs_left.gp_green_dw_in_frame and cs_right.gp_green_dw_in_frame:
+        goalpost_left = cs_left.gp_green_dw_pos_px
+        goalpost_right = cs_right.gp_green_dw_pos_px
+        dis, ang = triangulate_object_wrt_bot(goalpost_left, goalpost_right)
+        goalposts_dict[GREEN_DW][DIS_IN] = dis
+        goalposts_dict[GREEN_DW][RAD] = ang
+
+    # purple top
+    if cs_left.gp_purpl_up_in_frame and cs_right.gp_purpl_up_in_frame:
+        goalpost_left = cs_left.gp_purpl_up_pos_px
+        goalpost_right = cs_right.gp_purpl_up_pos_px
+        dis, ang = triangulate_object_wrt_bot(goalpost_left, goalpost_right)
+        goalposts_dict[PURPL_UP][DIS_IN] = dis
+        goalposts_dict[PURPL_UP][RAD] = ang    
+
+    # purple bottom
+    if cs_left.gp_purpl_dw_in_frame and cs_right.gp_purpl_dw_in_frame:
+        goalpost_left = cs_left.gp_purpl_dw_pos_px
+        goalpost_right = cs_right.gp_purpl_dw_pos_px
+        dis, ang = triangulate_object_wrt_bot(goalpost_left, goalpost_right)
+        goalposts_dict[PURPL_DW][DIS_IN] = dis
+        goalposts_dict[PURPL_DW][RAD] = ang    
+
+    return goalposts_dict
+
+
+def print_dict(d : dict):
+    for key in d.keys():
+        print(key, d[key])
