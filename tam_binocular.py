@@ -1,6 +1,7 @@
 import numpy as np
 from picamera2 import Picamera2 # type: ignore
 from tam_constants import CAMERA_CAPTURE_X, CAMERA_CAPTURE_Y, CAMERA_CAPTURE_FPS
+from tam_classes import Point
 
 CAM_LEFT = "LEFT_CAM"
 CAM_RIGHT = "RIGHT_CAM"

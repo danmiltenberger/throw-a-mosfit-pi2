@@ -39,22 +39,6 @@ def calc_focal_length():
     print(f"updated focal length: {round(focal_length,3)}")
 
 
-def calc_angle_from_screen_center(
-    point: Point,
-    camera_capture_x_px: int = 1280,
-    hfov_deg: float = 62.2,
-) -> float:
-    """Return horizontal angle in radians relative to the camera's center.
-
-    Assumes a 62.2-degree horizontal field of view.
-    Positive are to the left of forward and negative to the right.
-    """
-    half_fov_rad = math.radians(hfov_deg) / 2.0
-    center_x = camera_capture_x_px / 2.0
-    focal_length_px = center_x / math.tan(half_fov_rad)
-    return -math.atan2(point.x - center_x, focal_length_px)
-
-
 CAMERA_SEPARATION_IN = 8.0
 
 
@@ -252,6 +236,7 @@ def fix_asa_alpha_beta(rad_L: float, rad_R: float) -> tuple[float, float]:
         raise ValueError("rays do not converge in front of the gantry")
     return rad_alpha, rad_beta
 
+
 def _target_in_robot_frame(
         rad_L: float, rad_R: float, line_LR_in: float) -> tuple[float, float]:
     '''position of a target in the robot frame:
@@ -320,3 +305,73 @@ def calc_pos_and_angle_from_goalposts(
     new_heading = float(np.arctan2(np.sin(-psi), np.cos(-psi)))  # wrap to (-pi, pi]
     return new_pos, new_heading
         
+
+### left_x_px	right_x_px	dis_in	bearing_deg
+### 829.9441528320312 445.1778564453125 22.06 0.13
+
+import math
+
+BASELINE_IN = 8.0
+FOCAL_LENGTH_PX = 2249.5
+
+
+def calibrate_focal_length(left_x: float, right_x: float,
+                           true_distance_in: float) -> float:
+    """Effective focal length in pixels from one sighting at a known forward distance."""
+    disparity_px = left_x - right_x
+    return true_distance_in * disparity_px / BASELINE_IN
+
+
+def calc_angle_from_screen_center(point: Point,
+                                  camera_capture_x_px: int = 1280,
+                                  focal_length_px: float = FOCAL_LENGTH_PX) -> float:
+    center_x = camera_capture_x_px / 2.0
+    return -math.atan2(point.x - center_x, focal_length_px)
+
+
+def calibrate_focal_lengths():
+
+    # keys
+    KNOWN_IN = "KNOWN_IN"
+    LEFT_PX = "LEFT_PX"
+    RIGHT_PX = "RIGHT_PX"
+
+    focal48 = {
+        KNOWN_IN : 48,
+        LEFT_PX : 829.944,
+        RIGHT_PX : 445.1778
+    }
+
+    focal36 = {
+        KNOWN_IN : 36,
+        LEFT_PX : 879.609,
+        RIGHT_PX : 392.8488
+    }
+
+    focal24 = {
+        KNOWN_IN : 24,
+        LEFT_PX : 937.75,
+        RIGHT_PX : 229.99
+    }
+
+
+
+    list_focals = [focal48, focal36]
+    list_focal_lengths = []
+
+    for focal in list_focals:
+        focal_len = calibrate_focal_length(focal[LEFT_PX], focal[RIGHT_PX], focal[KNOWN_IN])
+        list_focal_lengths.append(focal_len)
+
+    avg = sum(list_focal_lengths) / len(list_focal_lengths)
+
+    print("avg focal length is: ", avg)
+
+    print("printing list:")
+    for i in list_focal_lengths:
+        print(i)
+
+
+
+if __name__ == "__main__":
+    calibrate_focal_lengths()
