@@ -16,11 +16,11 @@ while True:
     frame_left, frame_right = get_left_right_frames(camL,camR)
 
     # this is just for testing, I accidentally mounted the cameras upside down
-    frame_right = flip_rightside_up(frame_left)
-    frame_left = flip_rightside_up(frame_right)
+    frame_right_fixed = flip_rightside_up(frame_left.copy())
+    frame_left_fixed = flip_rightside_up(frame_right.copy())
 
-    dual_cs = get_dual_camerastate(frame_left=frame_left, frame_right=frame_right, search_dict=search_dict, match_set=match_set)
-    frame_with_cs = draw_dualcamerastate_to_cam(dual=dual_cs, left_frame=frame_left, right_frame=frame_right,settings= match_set)
+    dual_cs = get_dual_camerastate(frame_left=frame_left_fixed, frame_right=frame_right_fixed, search_dict=search_dict, match_set=match_set)
+    frame_with_cs = draw_dualcamerastate_to_cam(dual=dual_cs, left_frame=frame_left_fixed, right_frame=frame_right_fixed,settings= match_set)
 
 
     if show_frame_in_loop(frame_with_cs) == False:
