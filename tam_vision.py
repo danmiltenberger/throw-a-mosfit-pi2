@@ -492,11 +492,13 @@ def get_camerastate_filtered(
     hsv_frame = get_hsv_frame(frame_camera.copy())
 
     if BALL_RED in search_list:
-        ball_detect = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=1, obj_name=BALL_RED)[0]
-        if ball_detect.in_frame:
-            cs.ball_in_frame = True
-            cs.ball_pos_px = ball_detect.camera_pos_px
-            cs.ball_width_px = ball_detect.width_px
+        ball_detect_list = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=1, obj_name=BALL_RED)
+        if len(ball_detect_list) > 0:
+            ball_detect = ball_detect_list[0] 
+            if ball_detect.in_frame:
+                cs.ball_in_frame = True
+                cs.ball_pos_px = ball_detect.camera_pos_px
+                cs.ball_width_px = ball_detect.width_px
 
     if HAT_YELLOW in search_list:
         tbot_detect_list = get_detections_from_name(hsv_frame= hsv_frame, search_dict= search_dict, max_detections=1, obj_name=HAT_YELLOW)
@@ -527,6 +529,7 @@ def get_camerastate_filtered(
         len_list = len(green_detect_list)
         if len_list == 0:
             pass
+        
         if len_list >= 1:
             top_green_detect = green_detect_list[0]
             if top_green_detect.in_frame:
