@@ -5,6 +5,11 @@ from pathlib import Path
 from tam_classes import Settings
 
 
+def flip_rightside_up(frame: np.ndarray) -> np.ndarray:
+    """Correct a frame from a camera mounted upside down (180° rotation)."""
+    return cv2.rotate(frame, cv2.ROTATE_180)
+
+
 def concat_frames(
     orig_frame: np.ndarray,
     added_frame: np.ndarray,
