@@ -25,6 +25,7 @@ while True:
     frame_with_cs = draw_dualcamerastate_to_cam(dual=dual_cs, left_frame=frame_left_fixed, right_frame=frame_right_fixed,settings= match_set)
 
     dis_in, bear_rad = calc_range(dual_cs.left.ball_pos_px, dual_cs.right.ball_pos_px)
+    dis_in = round(dis_in,2)
     bear_deg = round(math.degrees(bear_rad))
 
     mid_sighting = get_midpoint(dual_cs.left.ball_pos_px, dual_cs.right.ball_pos_px)
