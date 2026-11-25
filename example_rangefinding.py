@@ -13,8 +13,13 @@ camL, camR = setup_left_right_cams()
 search_dict = load_search_dict_from_csv()
 match_set = get_settings(our_team_is_orange= False)
 
-while True:
 
+print("left_x_px", "right_x_px", "dis_in", "bearing_deg", sep="\t")
+
+RUN_LIVE : bool = False
+
+
+def example_rangefinding():
     frame_left, frame_right = get_left_right_frames(camL,camR)
 
     # this is just for testing, I accidentally mounted the cameras upside down
@@ -26,14 +31,21 @@ while True:
 
     dis_in, bear_rad = calc_range(dual_cs.left.ball_pos_px, dual_cs.right.ball_pos_px)
     dis_in = round(dis_in,2)
-    bear_deg = round(math.degrees(bear_rad))
+    bear_deg = round(math.degrees(bear_rad),2)
 
     mid_sighting = get_midpoint(dual_cs.left.ball_pos_px, dual_cs.right.ball_pos_px)
     frame_with_cs = add_text_left_of_point(center_left=mid_sighting, lines=[str(dis_in)+"in", str(bear_deg)+"deg"], frame=frame_with_cs)
 
+    print(dual_cs.left.ball_pos_px.x, dual_cs.right.ball_pos_px.x, dis_in, bear_deg)
 
     if show_frame_in_loop(frame_with_cs) == False:
-        break
+        return frame_with_cs
+
+if RUN_LIVE:
+    while True:
+        example_rangefinding()
+else:
+    example_rangefinding()
 
 
 
