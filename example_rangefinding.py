@@ -42,16 +42,13 @@ def example_rangefinding():
 
     print(dual_cs.left.ball_pos_px.x, dual_cs.right.ball_pos_px.x, dis_in, bear_deg)
 
-    if show_frame_in_loop(frame_with_cs) == False:
-        return frame_with_cs
+    return frame_with_cs
 
-if RUN_LIVE:
-    while True:
-        example_rangefinding()
-else:
+
+while True:
     frame = example_rangefinding()
-    if frame is not None:
-        show_frame(frame)
+    if show_frame_in_loop(frame) == False:
+        break
 
         
 
