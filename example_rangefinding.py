@@ -1,4 +1,4 @@
-from tam_frame import show_frame_in_loop, overlap_frames, flip_rightside_up
+from tam_frame import show_frame_in_loop, overlap_frames, flip_rightside_up, show_frame
 from tam_binocular import setup_left_right_cams, get_left_right_frames
 from tam_vision import get_dual_camerastate
 from tam_hsv import load_search_dict_from_csv
@@ -45,7 +45,9 @@ if RUN_LIVE:
     while True:
         example_rangefinding()
 else:
-    example_rangefinding()
+    frame = example_rangefinding()
+    if frame is not None:
+        show_frame(frame)
 
 
 
