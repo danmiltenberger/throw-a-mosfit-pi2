@@ -16,7 +16,7 @@ match_set = get_settings(our_team_is_orange= False)
 
 print("left_x_px", "right_x_px", "dis_in", "bearing_deg", sep="\t")
 
-RUN_LIVE : bool = False
+RUN_LIVE : bool = True
 
 
 def example_rangefinding():
