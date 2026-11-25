@@ -79,7 +79,8 @@ def calc_range(point_left_cam: Point, point_right_cam: Point) -> tuple[float, fl
     if disparity <= 0:
         # Rays are parallel or diverge: object is effectively at infinity,
         # or the two sightings aren't of the same object.
-        raise ValueError("Non-positive disparity; cannot triangulate this pair of sightings")
+        print("Non-positive disparity; cannot triangulate this pair of sightings")
+        return 0,0
 
     y = CAMERA_SEPARATION_IN / disparity            # forward distance (inches)
     x = -half_baseline - y * math.tan(theta_l)      # lateral offset (inches, + = right)
