@@ -17,8 +17,8 @@ def show_frames_and_wait_for_q():
             save_frame_as_png(right_frame, "hsv_photos/all_in_one_right.png")
 
 
-
-            
+if __name__ == "__main__":
+    show_frames_and_wait_for_q()
 
 
 
