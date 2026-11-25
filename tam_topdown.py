@@ -39,22 +39,56 @@ def calc_focal_length():
     print(f"updated focal length: {round(focal_length,3)}")
 
 
-def calc_angle_from_screen_center(point: Point) -> float:
+def calc_angle_from_screen_center(
+    point: Point,
+    camera_capture_x_px: int = 1280,
+    hfov_deg: float = 62.2,
+) -> float:
     """Return horizontal angle in radians relative to the camera's center.
 
     Assumes a 62.2-degree horizontal field of view.
-    Negative angles are left of center; positive angles are right.
+    Positive are to the left of forward and negative to the right.
     """
-    if CAMERA_CAPTURE_X <= 0:
-        raise ValueError("CAMERA_CAPTURE_X must be positive.")
-
-    center_x = CAMERA_CAPTURE_X / 2.0
-    half_fov_rad = math.radians(62.2 / 2.0)
-
+    half_fov_rad = math.radians(hfov_deg) / 2.0
+    center_x = camera_capture_x_px / 2.0
     focal_length_px = center_x / math.tan(half_fov_rad)
-    offset_x = point.x - center_x
+    return -math.atan2(point.x - center_x, focal_length_px)
 
-    return math.atan2(offset_x, focal_length_px)
+
+CAMERA_SEPARATION_IN = 8.0
+
+
+def calc_range(point_left_cam: Point, point_right_cam: Point) -> tuple[float, float]:
+    '''given two sightings of the same object from the left and right camera,
+    return the distance and angle to the object with respect to the gantry center
+    angle: positive left of forward, negative right of forward
+    both cameras face forward and are seperated center to center 8 inches'''
+    half_baseline = CAMERA_SEPARATION_IN / 2.0
+
+    # Bearing of the object from each camera (radians, positive = left of forward)
+    theta_l = calc_angle_from_screen_center(point_left_cam)
+    theta_r = calc_angle_from_screen_center(point_right_cam)
+
+    # Coordinate frame centered on the gantry: +y forward (up), +x right.
+    # Left camera at x = -4, right camera at x = +4.
+    # A positive bearing (left of forward) moves toward -x, so each ray is:
+    #   left:  x = -half_baseline - y * tan(theta_l)
+    #   right: x = +half_baseline - y * tan(theta_r)
+    # Setting them equal and solving for y:
+    disparity = math.tan(theta_r) - math.tan(theta_l)
+    if disparity <= 0:
+        # Rays are parallel or diverge: object is effectively at infinity,
+        # or the two sightings aren't of the same object.
+        raise ValueError("Non-positive disparity; cannot triangulate this pair of sightings")
+
+    y = CAMERA_SEPARATION_IN / disparity            # forward distance (inches)
+    x = -half_baseline - y * math.tan(theta_l)      # lateral offset (inches, + = right)
+
+    distance = math.hypot(x, y)
+    angle = math.atan2(-x, y)                       # flip x so + = left of forward
+
+    return distance, angle
+
 
 
 def convert_angle_from_screen_center_to_ccw_east(angle_rad: float) -> float:
