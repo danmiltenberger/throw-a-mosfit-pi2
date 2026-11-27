@@ -12,6 +12,7 @@ Setup:
     i2cdetect -y 1                         # should show 68 (and 0c only after bypass is on)
 """
 
+import math
 import struct
 import time
 
@@ -136,12 +137,139 @@ def read_immu(bus_num=1, addr=0x68):
     }
 
 
+# ---------------------------------------------------------------------------
+# Pose estimation
+# ---------------------------------------------------------------------------
+_IN_PER_G = _G * 39.3701          # 1 g in inches/s^2
+_WARMUP_S = 2.0                   # let the attitude filter converge; keep still
+_pose = None
+
+
+def reset_pose():
+    """Forget the current pose; the next update_pose() call re-zeros position and re-converges."""
+    global _pose
+    _pose = None
+
+
+def update_pose(imu, use_mag=True):
+    """
+    Dead-reckon position and heading from a read_immu() sample.
+    Call this repeatedly (e.g. every 10-20 ms) with fresh read_immu() output.
+
+    Returns a dict:
+        pos_in      : (north, east, up) in inches, relative to where it started
+        bearing_deg : heading, 0-360, clockwise (0 = magnetic north if the mag is used,
+                      otherwise 0 = the heading at startup)
+        vel_in_s    : (north, east, up) in inches/second
+        roll_deg, pitch_deg, stationary, ready
+
+    Keep the IMU still for the first ~2 s ('ready' becomes True after that).
+    Position is double-integrated accelerometer data, so it WILL drift; a
+    zero-velocity update (ZUPT) resets velocity whenever the IMU sits still.
+    """
+    global _pose
+    now = time.monotonic()
+    if _pose is None:
+        _pose = {"q": [1.0, 0.0, 0.0, 0.0], "v": [0.0, 0.0, 0.0], "p": [0.0, 0.0, 0.0],
+                 "bias": [0.0, 0.0, 0.0], "t": now, "t0": now, "still": 0}
+    s = _pose
+    dt = min(max(now - s["t"], 0.0), 0.5)
+    s["t"] = now
+    warm = (now - s["t0"]) < _WARMUP_S
+
+    ax, ay, az = imu["accel_g"]
+    gdps = imu["gyro_dps"]
+    amag = math.sqrt(ax * ax + ay * ay + az * az)
+
+    # --- stationary detection + gyro bias tracking ---
+    gmag = math.sqrt(sum((g - b) ** 2 for g, b in zip(gdps, s["bias"])))
+    stationary = abs(amag - 1.0) < 0.04 and gmag < 5.0
+    s["still"] = s["still"] + 1 if stationary else 0
+    if stationary:
+        s["bias"] = [b + 0.05 * (g - b) for g, b in zip(gdps, s["bias"])]
+    gx, gy, gz = (math.radians(g - b) for g, b in zip(gdps, s["bias"]))
+
+    # --- Mahony attitude filter (q = body -> world; world: x north, y west, z up) ---
+    q0, q1, q2, q3 = s["q"]
+    ex = ey = ez = 0.0
+
+    if 0.85 < amag < 1.15:  # only trust accel as a gravity reference when not accelerating
+        nx, ny, nz = ax / amag, ay / amag, az / amag
+        vx = 2 * (q1 * q3 - q0 * q2)
+        vy = 2 * (q0 * q1 + q2 * q3)
+        vz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3
+        ex += ny * vz - nz * vy
+        ey += nz * vx - nx * vz
+        ez += nx * vy - ny * vx
+
+    mag = imu.get("mag_ut") if use_mag else None
+    if mag:
+        mx, my, mz = mag[1], mag[0], -mag[2]  # AK8963 axes -> accel/gyro axes
+        mn = math.sqrt(mx * mx + my * my + mz * mz)
+        if mn > 0:
+            mx, my, mz = mx / mn, my / mn, mz / mn
+            hx = 2 * (mx * (0.5 - q2 * q2 - q3 * q3) + my * (q1 * q2 - q0 * q3) + mz * (q1 * q3 + q0 * q2))
+            hy = 2 * (mx * (q1 * q2 + q0 * q3) + my * (0.5 - q1 * q1 - q3 * q3) + mz * (q2 * q3 - q0 * q1))
+            hz = 2 * (mx * (q1 * q3 - q0 * q2) + my * (q2 * q3 + q0 * q1) + mz * (0.5 - q1 * q1 - q2 * q2))
+            bx, bz = math.sqrt(hx * hx + hy * hy), hz
+            wx = 2 * (bx * (0.5 - q2 * q2 - q3 * q3) + bz * (q1 * q3 - q0 * q2))
+            wy = 2 * (bx * (q1 * q2 - q0 * q3) + bz * (q0 * q1 + q2 * q3))
+            wz = 2 * (bx * (q0 * q2 + q1 * q3) + bz * (0.5 - q1 * q1 - q2 * q2))
+            ex += my * wz - mz * wy
+            ey += mz * wx - mx * wz
+            ez += mx * wy - my * wx
+
+    kp = 10.0 if warm else 1.0
+    gx, gy, gz = gx + kp * ex, gy + kp * ey, gz + kp * ez
+
+    h = 0.5 * dt
+    q0, q1, q2, q3 = (q0 + (-q1 * gx - q2 * gy - q3 * gz) * h,
+                      q1 + (q0 * gx + q2 * gz - q3 * gy) * h,
+                      q2 + (q0 * gy - q1 * gz + q3 * gx) * h,
+                      q3 + (q0 * gz + q1 * gy - q2 * gx) * h)
+    n = math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3)
+    q0, q1, q2, q3 = q0 / n, q1 / n, q2 / n, q3 / n
+    s["q"] = [q0, q1, q2, q3]
+
+    # --- rotate accel into the world frame, remove gravity, integrate ---
+    wxa = (1 - 2 * (q2 * q2 + q3 * q3)) * ax + 2 * (q1 * q2 - q0 * q3) * ay + 2 * (q1 * q3 + q0 * q2) * az
+    wya = 2 * (q1 * q2 + q0 * q3) * ax + (1 - 2 * (q1 * q1 + q3 * q3)) * ay + 2 * (q2 * q3 - q0 * q1) * az
+    wza = 2 * (q1 * q3 - q0 * q2) * ax + 2 * (q2 * q3 + q0 * q1) * ay + (1 - 2 * (q1 * q1 + q2 * q2)) * az
+    lin = (wxa * _IN_PER_G, wya * _IN_PER_G, (wza - 1.0) * _IN_PER_G)  # in/s^2
+
+    if warm:
+        s["v"], s["p"] = [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
+    elif s["still"] >= 5:  # ZUPT
+        s["v"] = [0.0, 0.0, 0.0]
+    else:
+        s["v"] = [v + a * dt for v, a in zip(s["v"], lin)]
+        s["p"] = [p + v * dt for p, v in zip(s["p"], s["v"])]
+
+    yaw = math.atan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
+    roll = math.atan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1 * q1 + q2 * q2))
+    pitch = math.asin(max(-1.0, min(1.0, 2 * (q0 * q2 - q3 * q1))))
+    px, py, pz = s["p"]
+    vx_, vy_, vz_ = s["v"]
+
+    return {
+        "pos_in": (px, -py, pz),                       # north, east, up
+        "bearing_deg": (-math.degrees(yaw)) % 360.0,   # clockwise from north
+        "vel_in_s": (vx_, -vy_, vz_),
+        "roll_deg": math.degrees(roll),
+        "pitch_deg": math.degrees(pitch),
+        "stationary": s["still"] >= 5,
+        "ready": not warm,
+    }
+
+
 if __name__ == "__main__":
+    print("Keep the IMU still for 2 seconds...")
+    last_print = 0.0
     while True:
         d = read_immu()
-        print(d["chip"],
-              "accel(g)=({:+.3f},{:+.3f},{:+.3f})".format(*d["accel_g"]),
-              "gyro(dps)=({:+.1f},{:+.1f},{:+.1f})".format(*d["gyro_dps"]),
-              "mag(uT)=" + ("({:+.1f},{:+.1f},{:+.1f})".format(*d["mag_ut"]) if d["mag_ut"] else "n/a"),
-              "T={:.1f}C".format(d["temp_c"]))
-        time.sleep(0.1)
+        pose = update_pose(d)
+        if time.monotonic() - last_print > 0.2:
+            last_print = time.monotonic()
+            print("N={:+8.1f} E={:+8.1f} Up={:+8.1f} in | bearing={:6.1f} deg {}".format(
+                *pose["pos_in"], pose["bearing_deg"], "" if pose["ready"] else "(calibrating)"))
+        time.sleep(0.01)
