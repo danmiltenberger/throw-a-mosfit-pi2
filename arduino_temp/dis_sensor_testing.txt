@@ -1,2 +1,40 @@
 // https://www.makerguides.com/hc-sr04-arduino-tutorial/
 
+// HC-SR04 test for Arduino Mega
+const int TRIG_PIN = A14;  // Analog 14 (digital pin 68)
+const int ECHO_PIN = A13;  // Analog 13 (digital pin 67)
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  digitalWrite(TRIG_PIN, LOW);
+  Serial.println("HC-SR04 test started");
+}
+
+void loop() {
+  // Send a 10 µs trigger pulse
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  // Measure echo pulse width (30 ms timeout, roughly 5 m)
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+
+  if (duration == 0) {
+    Serial.println("No echo received (out of range or wiring issue)");
+  } else {
+    float distanceCm = duration * 0.0343 / 2.0;
+    float distanceIn = distanceCm / 2.54;
+
+    Serial.print("Distance: ");
+    Serial.print(distanceCm, 1);
+    Serial.print(" cm  (");
+    Serial.print(distanceIn, 1);
+    Serial.println(" in)");
+  }
+
+  delay(500);
+}

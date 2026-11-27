@@ -1,0 +1,19 @@
+#include <AccelStepper.h>
+
+#define motorInterfaceType 1
+
+// ---------- Steppers ----------
+#define STEPPER_L_DIR 22    // gray
+#define STEPPER_L_STEP 24   // purple
+
+#define STEPPER_R_DIR 23    // blue
+#define STEPPER_R_STEP 25   // purple
+
+#define STEPPER_L_EN 26     // yellow
+#define STEPPER_R_EN 27     // yellow
+
+
+// ------ Limit Switches ------
+
+#define STEPPER_L_LIM_SWITCH 28
+#define STEPPER_R_LIM_SWITCH 29

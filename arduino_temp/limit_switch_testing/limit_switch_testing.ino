@@ -1,0 +1,59 @@
+#include <AccelStepper.h>
+
+#define motorInterfaceType 1
+
+// ---------- Steppers ----------
+#define STEPPER_L_DIR 22    // gray
+#define STEPPER_L_STEP 24   // purple
+
+#define STEPPER_R_DIR 23    // blue
+#define STEPPER_R_STEP 25   // purple
+
+#define STEPPER_L_EN 26     // yellow
+#define STEPPER_R_EN 27     // yellow
+
+// ------ Limit Switches ------
+#define STEPPER_L_LIM_SWITCH 28
+#define STEPPER_R_LIM_SWITCH 29
+
+// Wired to GND with INPUT_PULLUP: pressed = LOW.
+// Change to HIGH if your switches are wired normally-closed or to 5V.
+#define LIM_SWITCH_TRIGGERED LOW
+
+// Test function: prints when each limit switch is pressed/released
+void testLimitSwitches() {
+  static bool lastL = false;
+  static bool lastR = false;
+  static unsigned long lastChangeL = 0;
+  static unsigned long lastChangeR = 0;
+  const unsigned long debounceMs = 20;
+
+  bool currentL = (digitalRead(STEPPER_L_LIM_SWITCH) == LIM_SWITCH_TRIGGERED);
+  bool currentR = (digitalRead(STEPPER_R_LIM_SWITCH) == LIM_SWITCH_TRIGGERED);
+  unsigned long now = millis();
+
+  if (currentL != lastL && (now - lastChangeL) > debounceMs) {
+    lastL = currentL;
+    lastChangeL = now;
+    Serial.println(currentL ? "LEFT limit switch TRIGGERED" : "LEFT limit switch released");
+  }
+
+  if (currentR != lastR && (now - lastChangeR) > debounceMs) {
+    lastR = currentR;
+    lastChangeR = now;
+    Serial.println(currentR ? "RIGHT limit switch TRIGGERED" : "RIGHT limit switch released");
+  }
+}
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(STEPPER_L_LIM_SWITCH, INPUT_PULLUP);
+  pinMode(STEPPER_R_LIM_SWITCH, INPUT_PULLUP);
+
+  Serial.println("Limit switch test ready. Press a switch...");
+}
+
+void loop() {
+  testLimitSwitches();
+}

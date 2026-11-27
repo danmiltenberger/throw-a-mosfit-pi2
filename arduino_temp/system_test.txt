@@ -1,0 +1,239 @@
+#include <AccelStepper.h>
+#include <SparkFun_TB6612.h>
+
+#define motorInterfaceType 1
+
+// ---------- Steppers ----------
+#define STEPPER_L_DIR 22    // gray
+#define STEPPER_L_STEP 24   // purple
+
+#define STEPPER_R_DIR 23    // blue
+#define STEPPER_R_STEP 25   // purple
+
+#define STEPPER_L_EN 26     // yellow
+#define STEPPER_R_EN 27     // yellow
+
+// ---------- Limit switches ----------
+// One side of each switch to the pin, the other side to GND.
+// Internal pull-up: pin reads HIGH normally, LOW when pressed.
+#define LIMIT_L_PIN 28
+#define LIMIT_R_PIN 29
+
+AccelStepper stepper1(motorInterfaceType, STEPPER_L_STEP, STEPPER_L_DIR);  // LEFT
+AccelStepper stepper2(motorInterfaceType, STEPPER_R_STEP, STEPPER_R_DIR);  // RIGHT
+
+// ---------- Motor driver BACK ----------
+#define BACK_PWMA 7     // yellow
+#define BACK_AIN2 34    // green
+#define BACK_AIN1 36    // yellow
+#define BACK_STBY 38    // orange
+#define BACK_BIN1 40    // red
+#define BACK_BIN2 42    // brown
+#define BACK_PWMB 6     // black
+
+// ---------- Motor driver FRONT ----------
+#define FRONT_PWMA 5    // yellow
+#define FRONT_AIN2 44   // green
+#define FRONT_AIN1 46   // yellow
+#define FRONT_STBY 48   // orange
+#define FRONT_BIN1 50   // red
+#define FRONT_BIN2 52   // brown
+#define FRONT_PWMB 4    // yellow
+
+// Direction offsets: 1 = normal, -1 = reversed
+const int offsetBackLeft   = 1;
+const int offsetBackRight  = 1;
+const int offsetFrontLeft  = 1;
+const int offsetFrontRight = 1;
+
+// Motor(In1, In2, PWM, offset, STBY)
+Motor motorBackLeft   = Motor(BACK_AIN1,  BACK_AIN2,  BACK_PWMA,  offsetBackLeft,   BACK_STBY);
+Motor motorBackRight  = Motor(BACK_BIN1,  BACK_BIN2,  BACK_PWMB,  offsetBackRight,  BACK_STBY);
+Motor motorFrontLeft  = Motor(FRONT_AIN1, FRONT_AIN2, FRONT_PWMA, offsetFrontLeft,  FRONT_STBY);
+Motor motorFrontRight = Motor(FRONT_BIN1, FRONT_BIN2, FRONT_PWMB, offsetFrontRight, FRONT_STBY);
+
+// ---- Tune these for your hardware ----
+const float STEPS_PER_REV = 200.0 * 1;          // 200 steps/rev x microstepping
+const float MAX_SPEED     = 2000;               // steps/sec
+const float ACCELERATION  = 8000;               // steps/sec^2
+const int   DC_SPEED      = 200;                // 0-255 PWM duty for DC motors
+const float HOMING_SPEED  = 400;                // steps/sec (keep slow)
+const unsigned long HOMING_TIMEOUT_MS = 20000;  // give up if the switch is never hit
+
+// Homing directions
+const int DIR_CW  =  1;   // positive
+const int DIR_CCW = -1;   // negative
+
+// ---------- Stepper helpers ----------
+
+long degreesToSteps(float degrees) {
+  return round(degrees * STEPS_PER_REV / 360.0);
+}
+
+// Absolute move (non-blocking)
+void moveToAngle(AccelStepper &stepper, float degrees) {
+  stepper.moveTo(degreesToSteps(degrees));
+}
+
+// Relative move from a command like "STEPL_180_CCW" (non-blocking)
+void startRotate(const String &command) {
+  int sep1 = command.indexOf('_');
+  int sep2 = command.indexOf('_', sep1 + 1);
+  if (sep1 < 0 || sep2 < 0) {
+    Serial.print("Invalid command: ");
+    Serial.println(command);
+    return;
+  }
+
+  String motorStr = command.substring(0, sep1);
+  String degStr   = command.substring(sep1 + 1, sep2);
+  String dirStr   = command.substring(sep2 + 1);
+
+  motorStr.trim(); motorStr.toUpperCase();
+  dirStr.trim();   dirStr.toUpperCase();
+
+  AccelStepper *stepper;
+  if (motorStr == "STEPL")      stepper = &stepper1;
+  else if (motorStr == "STEPR") stepper = &stepper2;
+  else {
+    Serial.print("Invalid motor: ");
+    Serial.println(motorStr);
+    return;
+  }
+
+  long steps = degreesToSteps(degStr.toFloat());
+  if (dirStr == "CCW")     steps = -steps;
+  else if (dirStr != "CW") {
+    Serial.print("Invalid direction: ");
+    Serial.println(dirStr);
+    return;
+  }
+
+  stepper->move(steps);
+}
+
+void runSteppers() {
+  stepper1.run();
+  stepper2.run();
+}
+
+bool steppersBusy() {
+  return stepper1.distanceToGo() != 0 || stepper2.distanceToGo() != 0;
+}
+
+// Blocks until both steppers finish their current moves
+void waitForSteppers() {
+  while (steppersBusy()) {
+    runSteppers();
+  }
+}
+
+// ---------- Limit switch / homing ----------
+
+bool limitPressed(int pin) {
+  if (digitalRead(pin) == LOW) {
+    delay(5);                          // simple debounce
+    return digitalRead(pin) == LOW;
+  }
+  return false;
+}
+
+// Homes ONE stepper in the given direction (DIR_CW or DIR_CCW) until its
+// limit switch is hit, then sets that position as 0. Blocking.
+bool homeStepper(AccelStepper &stepper, int limitPin, int direction, const char *name) {
+  if (limitPressed(limitPin)) {
+    Serial.print(name);
+    Serial.println(": limit switch already pressed, setting 0 here");
+    stepper.setCurrentPosition(0);
+    return true;
+  }
+
+  Serial.print(name);
+  Serial.println(direction == DIR_CW ? ": homing CW..." : ": homing CCW...");
+  stepper.setSpeed(direction * HOMING_SPEED);
+  unsigned long start = millis();
+
+  while (!limitPressed(limitPin)) {
+    stepper.runSpeed();
+    if (millis() - start > HOMING_TIMEOUT_MS) {
+      Serial.print(name);
+      Serial.println(": homing FAILED (timed out)");
+      return false;
+    }
+  }
+
+  stepper.setCurrentPosition(0);
+  Serial.print(name);
+  Serial.println(": limit switch hit, position set to 0");
+  return true;
+}
+
+// ---------- DC motor helpers (SparkFun TB6612 library) ----------
+
+// speed: -255..255 (positive = forward, negative = backward)
+void spinMotor(Motor &motor, int speed, unsigned long durationMs) {
+  motor.drive(speed);
+  delay(durationMs);
+  motor.brake();
+}
+
+void spinAllMotors(int speed, unsigned long durationMs) {
+  motorBackLeft.drive(speed);
+  motorBackRight.drive(speed);
+  motorFrontLeft.drive(speed);
+  motorFrontRight.drive(speed);
+  delay(durationMs);
+  motorBackLeft.brake();
+  motorBackRight.brake();
+  motorFrontLeft.brake();
+  motorFrontRight.brake();
+}
+
+// ---------- Setup / Loop ----------
+
+void setup() {
+  // Enable pins: HIGH = disabled on most drivers
+  pinMode(STEPPER_L_EN, OUTPUT);
+  pinMode(STEPPER_R_EN, OUTPUT);
+  digitalWrite(STEPPER_L_EN, HIGH);
+  digitalWrite(STEPPER_R_EN, HIGH);
+
+  // Limit switches
+  pinMode(LIMIT_L_PIN, INPUT_PULLUP);
+  pinMode(LIMIT_R_PIN, INPUT_PULLUP);
+
+  Serial.begin(9600);
+  delay(1000);
+
+  stepper1.setMaxSpeed(MAX_SPEED);
+  stepper1.setAcceleration(ACCELERATION);
+  stepper2.setMaxSpeed(MAX_SPEED);
+  stepper2.setAcceleration(ACCELERATION);
+
+  // Enable ONLY the left driver; the right stays disabled for this test
+  digitalWrite(STEPPER_L_EN, LOW);
+  delay(100);
+  Serial.println("=== Left stepper homing test ===");
+
+  // Left motor: spin CW until the limit switch, set that as 0
+  if (homeStepper(stepper1, LIMIT_L_PIN, DIR_CW, "Left stepper")) {
+    Serial.print("Current position (steps): ");
+    Serial.println(stepper1.currentPosition());
+    delay(1000);
+
+    // Prove 0 is set: move 90 degrees CCW, away from the switch
+    Serial.println("Moving left stepper to -90 deg...");
+    moveToAngle(stepper1, -90);
+    while (stepper1.distanceToGo() != 0) {
+      stepper1.run();
+    }
+    Serial.print("Current position (steps): ");
+    Serial.println(stepper1.currentPosition());
+  }
+
+  Serial.println("=== Left stepper homing test complete ===");
+}
+
+void loop() {
+  stepper1.run();  // only the left stepper is in use
+}
