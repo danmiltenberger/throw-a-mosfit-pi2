@@ -9,6 +9,8 @@ Wire formats (newline-terminated, 115200 baud):
     ROTATE  ROTATE_<speed%>_<degrees>[_<seconds>]     e.g. ROTATE_60_90   (+CCW)
     STOP    STOP
     TEST    TEST
+
+Run this file directly for an interactive prompt (type ? at any prompt for help).
 """
 
 from __future__ import annotations
@@ -154,19 +156,158 @@ def send_command(
     return replies
 
 
+# ---------------------------------------------------------------------------
+# Interactive prompting
+# ---------------------------------------------------------------------------
+
+MENU_HELP = """
+Commands:
+  1  motor   Run one wheel (or ALL) at a set speed for a set time
+  2  strafe  Drive in any direction (mecanum). Angle is +CCW from east:
+               0 = right, 90 = forward, 180 = left, 270 = back
+  3  rotate  Spin in place. Positive degrees = CCW, negative = CW
+  4  stop    Brake all motors immediately
+  5  test    Run the built-in automatic motor test sequence
+  q  quit    Exit
+
+Type ? at any prompt to see help for that prompt.
+"""
+
+
+def _ask_float(
+    prompt: str,
+    help_text: str,
+    min_val: Optional[float] = None,
+    max_val: Optional[float] = None,
+    optional: bool = False,
+    nonzero: bool = False,
+    min_exclusive: bool = False,
+) -> Optional[float]:
+    """Ask for a number, re-prompting until valid. '?' shows help; blank returns None if optional."""
+    while True:
+        raw = input(f"{prompt}{' (optional, Enter to skip)' if optional else ''}: ").strip()
+
+        if raw == "?":
+            print(f"  {help_text}")
+            continue
+        if raw == "" and optional:
+            return None
+
+        try:
+            value = float(raw)
+        except ValueError:
+            print("  Please enter a number (or ? for help).")
+            continue
+
+        if nonzero and value == 0:
+            print("  Value cannot be zero.")
+        elif min_val is not None and (value < min_val or (min_exclusive and value == min_val)):
+            print(f"  Value must be {'greater than' if min_exclusive else 'at least'} {_fmt(min_val)}.")
+        elif max_val is not None and value > max_val:
+            print(f"  Value must be at most {_fmt(max_val)}.")
+        else:
+            return value
+
+
+def _ask_motor() -> str:
+    while True:
+        raw = input("Motor [LF/RF/LB/RB/ALL]: ").strip().upper()
+        if raw == "?":
+            print("  LF = left front, RF = right front, LB = left back, RB = right back, "
+                  "ALL = all four at once.")
+        elif raw in VALID_MOTORS:
+            return raw
+        else:
+            print(f"  Choose one of {', '.join(VALID_MOTORS)} (or ? for help).")
+
+
+def prompt_for_command() -> Optional[BotCommand]:
+    """
+    Interactively build a BotCommand, with help text at every step.
+    Returns None if the user chooses to quit.
+    """
+    print(MENU_HELP)
+    while True:
+        choice = input("Command [1-5, q, ?]: ").strip().lower()
+
+        if choice in ("?", "h", "help"):
+            print(MENU_HELP)
+
+        elif choice in ("q", "quit", "exit"):
+            return None
+
+        elif choice in ("1", "motor"):
+            motor = _ask_motor()
+            speed = _ask_float(
+                "Speed % (-100 to 100)",
+                "Percent of full power. Negative runs the motor in reverse.",
+                -100, 100)
+            seconds = _ask_float(
+                "Seconds",
+                "How long to run, in seconds. Decimals allowed (e.g. 2.5).",
+                0, None, min_exclusive=True)
+            return BotCommand.motor_cmd(motor, speed, seconds)
+
+        elif choice in ("2", "strafe"):
+            speed = _ask_float(
+                "Speed % (0 to 100)",
+                "Duty of the fastest wheel; the others are scaled to match.",
+                0, 100)
+            angle = _ask_float(
+                "Angle in degrees",
+                "Direction of travel, +CCW from the robot's east (right): "
+                "0 = right, 90 = forward, 180 = left, 270 = back. Any angle works, e.g. 45.")
+            seconds = _ask_float(
+                "Seconds",
+                "How long to strafe. Skip to keep going until you send STOP.",
+                0, None, optional=True, min_exclusive=True)
+            return BotCommand.strafe(speed, angle, seconds)
+
+        elif choice in ("3", "rotate"):
+            speed = _ask_float(
+                "Speed % (greater than 0, up to 100)",
+                "Duty applied to every wheel while spinning.",
+                0, 100, min_exclusive=True)
+            degrees = _ask_float(
+                "Degrees (+CCW, -CW)",
+                "Sign sets the direction: positive = counterclockwise, negative = clockwise. "
+                "If you give seconds, only the sign is used; if you skip seconds, the "
+                "firmware estimates run time from the size of this number.",
+                nonzero=True)
+            seconds = _ask_float(
+                "Seconds",
+                "How long to spin. Skip to let the robot estimate the time from the degrees.",
+                0, None, optional=True, min_exclusive=True)
+            return BotCommand.rotate(speed, degrees, seconds)
+
+        elif choice in ("4", "stop"):
+            return BotCommand.stop()
+
+        elif choice in ("5", "test"):
+            return BotCommand.test()
+
+        else:
+            print("  Unrecognized choice. Enter 1-5, q to quit, or ? for help.")
+
+
 if __name__ == "__main__":
-    # Example usage: change the port for your system (e.g. "COM3" on Windows,
+    # Change the port for your system (e.g. "COM3" on Windows,
     # "/dev/ttyACM0" on Linux, "/dev/cu.usbmodem1101" on macOS).
     PORT = "/dev/ttyACM0"
 
     with open_bot_serial(PORT) as bot:
-        for command in (
-            BotCommand.motor_cmd("LF", 100, 2),     # left front, 100%, 2 s
-            BotCommand.strafe(50, 90, 3),           # forward at 50% for 3 s
-            BotCommand.rotate(60, -90),             # ~90 deg CW at 60%, estimated time
-            BotCommand.stop(),
-        ):
-            print(">>", command.to_wire())
-            for reply in send_command(bot, command):
-                print("<<", reply)
-            time.sleep(0.5)
+        try:
+            while True:
+                command = prompt_for_command()
+                if command is None:
+                    break
+                print(">>", command.to_wire())
+                for reply in send_command(bot, command):
+                    print("<<", reply)
+                print()
+        except (KeyboardInterrupt, EOFError):
+            print()
+        finally:
+            # Make sure the robot isn't left driving when the script exits
+            send_command(bot, BotCommand.stop(), read_reply=False)
+            print("Sent STOP. Goodbye.")
